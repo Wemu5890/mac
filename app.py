@@ -29,7 +29,7 @@ app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 SESSION_FILES = {}
 
 # 自动更新配置参数
-CURRENT_VERSION = "v1.0.9"  # 把版本号提上去
+CURRENT_VERSION = "v1.0.12"  # 把版本号提上去
 GITHUB_API_URL = "https://api.github.com/repos/Wemu5890/mac/releases/latest"
 
 # 创建全局取消 SSL 验证的上下文，绕过底层证书丢失导致的 500 错误

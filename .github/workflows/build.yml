@@ -49,12 +49,12 @@ jobs:
       if: matrix.os == 'windows-latest'
       uses: softprops/action-gh-release@v1
       with:
-        files: release/卓越数据更新中心_Setup.exe
+        files: release/教师信息更新工具_Setup.exe  # 👈 换成全新的名字
         draft: false
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+        
     - name: Upload Release Assets (macOS)
       if: matrix.os == 'macos-latest'
       uses: softprops/action-gh-release@v1
