@@ -48,4 +48,11 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-// 检测并静默杀掉进程（可选的高级处理，这里 CloseApplications=yes 已能处理大部分情况）
+function InitializeSetup(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  // 在安装包启动的第一秒，不管三七二十一，直接调用 Windows 底层命令强杀旧进程！
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := True;
+end;

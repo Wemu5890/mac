@@ -32,14 +32,14 @@ jobs:
     - name: Build Executable via PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --noconfirm --onefile --windowed --add-data 'index.html;.' --add-data 'app.js;.' --add-data 'style.css;.' --name 'app' app.py
+        pyinstaller --noconfirm --onefile --windowed --icon=logo.ico --add-data 'index.html;.' --add-data 'app.js;.' --add-data 'style.css;.' --name 'app' app.py
 
     - name: Build Executable via PyInstaller (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        pyinstaller --noconfirm --onedir --windowed --add-data 'index.html:.' --add-data 'app.js:.' --add-data 'style.css:.' --name 'app_mac' app.py
+        pyinstaller --noconfirm --onedir --windowed --icon=logo.icns --add-data 'index.html:.' --add-data 'app.js:.' --add-data 'style.css:.' --name '教师信息更新工具' app.py
         cd dist
-        zip -r app_mac.zip app_mac.app
+        zip -r app_mac.zip "教师信息更新工具.app"
 
     - name: Compile Inno Setup Installer (Windows)
       if: matrix.os == 'windows-latest'
@@ -49,7 +49,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       uses: softprops/action-gh-release@v1
       with:
-        files: release/教师信息更新工具_Setup.exe  # 👈 换成全新的名字
+        files: release/教师信息更新工具_Setup.exe
         draft: false
         prerelease: false
       env:
