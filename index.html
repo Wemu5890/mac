@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css" />
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="/logo.ico">
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -22,6 +21,7 @@
             });
         }
     </script>
+    <link rel="icon" href="/logo.ico">
 </head>
 <body>
     <div id="loading-overlay" class="loading-overlay hidden">
@@ -31,49 +31,85 @@
 
     <div class="app-container">
         <header class="app-header">
-            <div class="header-left">
-                <h1>【教师信息123】</h1>
-                <span class="version-tag">Beta v1.0</span>
-            </div>
-            <div class="header-actions">
-                <button id="btn-tutorial" class="btn btn-outline" style="margin-right: 12px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    使用教程
-                </button>
-                <div class="upload-btn-wrapper" id="step-upload">
-                    <button class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        上传 Excel 文件
+            <div class="header-content">
+                <div class="title-group">
+                    <h1>教师信息更新</h1>
+                    <button id="btn-start-guide" class="btn btn-help" title="查看操作指南">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <span>指南</span>
                     </button>
-                    <input type="file" id="file-input" accept=".xlsx, .xls" />
                 </div>
+                <p>123信息批量更新及数据维护工具</p>
             </div>
         </header>
 
         <main class="main-content">
-            <div id="empty-state" class="empty-state">
-                <div class="empty-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-                </div>
-                <h2>暂无数据</h2>
-                <p>请点击右上角上传包含“编号”或“姓名”的 Excel 文件</p>
-                <button class="btn btn-outline" onclick="document.getElementById('file-input').click()" style="margin-top: 16px;">
-                    立即上传
-                </button>
-            </div>
-
-            <section id="data-section" class="data-section hidden">
-                <div class="toolbar">
-                    <div class="search-box" id="step-search">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="search-input" placeholder="输入关键字搜索...">
+            <!-- Upload Section -->
+            <section id="upload-section" class="upload-wrapper">
+                <div class="card upload-card" id="drop-zone">
+                    <div class="upload-icon">
+                        <!-- High quality 3D-like glass SVG for Excel -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="#60A5FA" fill="#EEF4FF"></rect>
+                            <path d="M8 8l8 8" stroke="#2563EB"></path>
+                            <path d="M16 8l-8 8" stroke="#2563EB"></path>
+                        </svg>
                     </div>
-                    
-                    <div class="toolbar-actions">
-                        <button id="btn-export" class="btn btn-success" disabled>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            导出选中行数据
-                        </button>
+                    <h2>拖拽上传教师信息文件</h2>
+                    <p>支持 .xlsx / .xls，最大支持 50MB</p>
+                    <input type="file" id="file-input" accept=".xlsx, .xls" hidden>
+                </div>
+                
+                <div class="info-modules">
+                    <div class="info-card">
+                        <h3>操作流程</h3>
+                        <p>① 上传文件 ➔ ② 自动识别字段<br>➔ ③ 批量更新数据 ➔ ④ 导出结果</p>
+                    </div>
+                    <div class="info-card">
+                        <h3>支持内容</h3>
+                        <ul class="check-list">
+                            <li>✓ 教师基础信息</li>
+                            <li>✓ 班主任信息</li>
+                            <li>✓ 角色权限配置</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h3>系统优势</h3>
+                        <ul class="check-list">
+                            <li>✓ 自动校验重复数据</li>
+                            <li>✓ 智能识别字段</li>
+                            <li>✓ 数据批量极速覆盖</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Workspace Section -->
+            <section id="workspace-section" class="card workspace-wrapper hidden">
+                <!-- 第一层级：全局操作区 -->
+                <div class="workspace-top-bar">
+                    <div class="text-parse-tools">
+                        <textarea id="paste-input" class="styled-input" placeholder="将纯文本数据粘贴到这里智能解析..." style="resize: none;"></textarea>
+                        <button id="btn-parse-text" class="btn btn-primary">✨ 识别并填入</button>
+                    </div>
+                    <div class="global-actions">
+                        <button id="btn-update-from-excel" class="btn btn-success">📥 导入Excel进行比对</button>
+                        <input type="file" id="update-file-input" accept=".xlsx, .xls" style="display: none;">
+                        <button id="btn-export" class="btn btn-success">📤 导出修改后的Excel</button>
+                    </div>
+                </div>
+
+                <!-- 第二层级：表格操作区 -->
+                <div class="workspace-second-bar">
+                    <div class="search-box">
+                        <input type="text" id="global-table-filter" placeholder="🔍 搜索教师编号 / 姓名 / 手机号...">
+                    </div>
+                    <div class="batch-tools">
+                        <select id="batch-column" class="styled-input">
+                            <option value="">-- 选择要批量更新的列 --</option>
+                        </select>
+                        <input type="text" id="batch-value" class="styled-input" placeholder="输入新值...">
+                        <button id="btn-batch-apply" class="btn btn-primary">批量应用到选中行</button>
                     </div>
                 </div>
 
@@ -94,226 +130,7 @@
         </main>
     </div>
 
-    <div id="update-modal" class="loading-overlay hidden" style="z-index: 10000;">
-        <div class="card" style="padding: 24px; max-width: 400px; text-align: center;">
-            <h2 style="margin-top: 0; color: var(--primary-color);">✨ 发现新版本！</h2>
-            <p id="update-message" style="color: var(--text-secondary); margin-bottom: 24px;">发现新版本，是否立即更新？</p>
-            <div style="display: flex; gap: 12px; justify-content: center;">
-                <button id="btn-cancel-update" class="btn" style="border: 1px solid #CBD5E1; color: var(--text-secondary);">稍后再说</button>
-                <button id="btn-confirm-update" class="btn btn-primary">立即更新</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
-    <script src="app.js"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教师信息更新工具</title>
-    <meta name="description" content="快速读取、编辑及导出 Excel 数据">
-    <meta name="theme-color" content="#F8FAFC">
-    <link rel="manifest" href="manifest.json">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css" />
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="/logo.ico">
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then((registration) => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }, (err) => {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
-            });
-        }
-    </script>
-</head>
-<body>
-    <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="spinner"></div>
-        <p id="loading-text">处理中，请稍候...</p>
-    </div>
-
-    <div class="app-container">
-        <header class="app-header">
-            <div class="header-left">
-                <h1>【教师信息123】</h1>
-                <span class="version-tag">Beta v1.0</span>
-            </div>
-            <div class="header-actions">
-                <button id="btn-tutorial" class="btn btn-outline" style="margin-right: 12px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    使用教程
-                </button>
-                <div class="upload-btn-wrapper" id="step-upload">
-                    <button class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        上传 Excel 文件
-                    </button>
-                    <input type="file" id="file-input" accept=".xlsx, .xls" />
-                </div>
-            </div>
-        </header>
-
-        <main class="main-content">
-            <div id="empty-state" class="empty-state">
-                <div class="empty-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-                </div>
-                <h2>暂无数据</h2>
-                <p>请点击右上角上传包含“编号”或“姓名”的 Excel 文件</p>
-                <button class="btn btn-outline" onclick="document.getElementById('file-input').click()" style="margin-top: 16px;">
-                    立即上传
-                </button>
-            </div>
-
-            <section id="data-section" class="data-section hidden">
-                <div class="toolbar">
-                    <div class="search-box" id="step-search">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="search-input" placeholder="输入关键字搜索...">
-                    </div>
-                    
-                    <div class="toolbar-actions">
-                        <button id="btn-export" class="btn btn-success" disabled>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            导出选中行数据
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-container">
-                    <table id="data-table">
-                        <thead>
-                            <tr id="table-head-row"></tr>
-                        </thead>
-                        <tbody id="table-body"></tbody>
-                    </table>
-                </div>
-                
-                <div class="status-bar">
-                    <span id="row-count" class="badge">总行数: 0</span>
-                    <span id="selected-count" class="badge">已选: 0</span>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <div id="update-modal" class="loading-overlay hidden" style="z-index: 10000;">
-        <div class="card" style="padding: 24px; max-width: 400px; text-align: center;">
-            <h2 style="margin-top: 0; color: var(--primary-color);">✨ 发现新版本！</h2>
-            <p id="update-message" style="color: var(--text-secondary); margin-bottom: 24px;">发现新版本，是否立即更新？</p>
-            <div style="display: flex; gap: 12px; justify-content: center;">
-                <button id="btn-cancel-update" class="btn" style="border: 1px solid #CBD5E1; color: var(--text-secondary);">稍后再说</button>
-                <button id="btn-confirm-update" class="btn btn-primary">立即更新</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
-    <script src="app.js"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教师信息更新工具</title>
-    <meta name="description" content="快速读取、编辑及导出 Excel 数据">
-    <meta name="theme-color" content="#F8FAFC">
-    <link rel="manifest" href="manifest.json">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css" />
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="/logo.ico">
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then((registration) => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }, (err) => {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
-            });
-        }
-    </script>
-</head>
-<body>
-    <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="spinner"></div>
-        <p id="loading-text">处理中，请稍候...</p>
-    </div>
-
-    <div class="app-container">
-        <header class="app-header">
-            <div class="header-left">
-                <h1>【教师信息123】</h1>
-                <span class="version-tag">Beta v1.0</span>
-            </div>
-            <div class="header-actions">
-                <button id="btn-tutorial" class="btn btn-outline" style="margin-right: 12px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    使用教程
-                </button>
-                <div class="upload-btn-wrapper" id="step-upload">
-                    <button class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        上传 Excel 文件
-                    </button>
-                    <input type="file" id="file-input" accept=".xlsx, .xls" />
-                </div>
-            </div>
-        </header>
-
-        <main class="main-content">
-            <div id="empty-state" class="empty-state">
-                <div class="empty-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-                </div>
-                <h2>暂无数据</h2>
-                <p>请点击右上角上传包含“编号”或“姓名”的 Excel 文件</p>
-                <button class="btn btn-outline" onclick="document.getElementById('file-input').click()" style="margin-top: 16px;">
-                    立即上传
-                </button>
-            </div>
-
-            <section id="data-section" class="data-section hidden">
-                <div class="toolbar">
-                    <div class="search-box" id="step-search">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="search-input" placeholder="输入关键字搜索...">
-                    </div>
-                    
-                    <div class="toolbar-actions">
-                        <button id="btn-export" class="btn btn-success" disabled>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            导出选中行数据
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-container">
-                    <table id="data-table">
-                        <thead>
-                            <tr id="table-head-row"></tr>
-                        </thead>
-                        <tbody id="table-body"></tbody>
-                    </table>
-                </div>
-                
-                <div class="status-bar">
-                    <span id="row-count" class="badge">总行数: 0</span>
-                    <span id="selected-count" class="badge">已选: 0</span>
-                </div>
-            </section>
-        </main>
-    </div>
-
+    <!-- Update Modal -->
     <div id="update-modal" class="loading-overlay hidden" style="z-index: 10000;">
         <div class="card" style="padding: 24px; max-width: 400px; text-align: center;">
             <h2 style="margin-top: 0; color: var(--primary-color);">✨ 发现新版本！</h2>
