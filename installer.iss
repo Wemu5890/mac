@@ -1,9 +1,9 @@
 ; Inno Setup Script for Excel Updater Tool
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
-#define MyAppName "卓越数据更新中心"
-#define MyAppVersion "1.0.0"
-#define MyAppPublisher "Your Company"
+#define MyAppName "教师信息更新工具"
+#define MyAppVersion "1.0.9"
+#define MyAppPublisher "运营"
 #define MyAppExeName "app.exe"
 
 [Setup]
@@ -14,9 +14,12 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
-; 默认打包到上层目录的 release 文件夹
+; 默认打包到外层目录
 OutputDir=release
-OutputBaseFilename=卓越数据更新中心_Setup
+; 修改安装包的名字
+OutputBaseFilename=教师信息更新工具_Setup
+; 为安装程序本身添加图标 (确保 logo.ico 存在于同一目录下)
+SetupIconFile=logo.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -37,8 +40,9 @@ Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ; 注意: 不要在共享系统文件中使用 "Flags: ignoreversion"
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+; 创建带有图标的快捷方式
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

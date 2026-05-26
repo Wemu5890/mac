@@ -1,16 +1,17 @@
 import os
+import sys
 import uuid
 import tempfile
 import threading
 import webbrowser
 import socket
-from flask import Flask, request, jsonify, send_file, send_from_directory
-import openpyxl
 import json
 import urllib.request
+import urllib.error
+import ssl  # 新增：用于解决 HTTPS 证书校验拦截问题
 import subprocess
-
-import sys
+import openpyxl
+from flask import Flask, request, jsonify, send_file, send_from_directory
 
 def get_base_path():
     """获取程序运行时的绝对路径（兼容 PyInstaller 单文件解压路径）"""
@@ -27,15 +28,19 @@ app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 # 存储 sessionId 与本地文件的映射
 SESSION_FILES = {}
 
-# 自动更新配置参数 (需替换为您真实的 GitHub 信息)
-CURRENT_VERSION = "v1.0.8"
+# 自动更新配置参数
+CURRENT_VERSION = "v1.0.9"  # 把版本号提上去
 GITHUB_API_URL = "https://api.github.com/repos/Wemu5890/mac/releases/latest"
+
+# 创建全局取消 SSL 验证的上下文，绕过底层证书丢失导致的 500 错误
+ssl_context = ssl._create_unverified_context()
 
 @app.route('/api/check_update')
 def check_update():
     try:
         req = urllib.request.Request(GITHUB_API_URL, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as response:
+        # 传入 context=ssl_context，完美绕过 SSL 拦截
+        with urllib.request.urlopen(req, timeout=10, context=ssl_context) as response:
             data = json.loads(response.read().decode('utf-8'))
             latest_version = data.get('tag_name', '')
             download_url = ''
@@ -50,8 +55,10 @@ def check_update():
                         download_url = asset['browser_download_url']
                         break
             
-            # 简单的版本比较
-            has_update = bool(latest_version and latest_version > CURRENT_VERSION)
+            # 更精准的版本比较（去除 'v' 字符后对比）
+            has_update = False
+            if latest_version:
+                has_update = latest_version.replace('v', '') > CURRENT_VERSION.replace('v', '')
             
             return jsonify({
                 "current_version": CURRENT_VERSION,
@@ -60,6 +67,8 @@ def check_update():
                 "download_url": download_url,
                 "release_notes": data.get('body', '')
             })
+    except urllib.error.HTTPError as e:
+        return jsonify({"error": f"请求 GitHub 被拒绝 (HTTP {e.code})，可能是访问太频繁"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -71,24 +80,21 @@ def do_update():
         return jsonify({"error": "缺少下载链接"}), 400
         
     try:
-        # 根据系统确定临时文件名
         is_mac = sys.platform == 'darwin'
         ext = ".zip" if is_mac else ".exe"
         installer_path = os.path.join(tempfile.gettempdir(), f"update_package{ext}")
         
         req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=60) as response, open(installer_path, 'wb') as out_file:
+        # 下载文件时同样需要取消 SSL 验证
+        with urllib.request.urlopen(req, timeout=60, context=ssl_context) as response, open(installer_path, 'wb') as out_file:
             out_file.write(response.read())
             
         # 启动安装程序（分离进程）
         if is_mac:
-            # macOS: 打开下载的压缩包或 DMG，提示用户覆盖
             subprocess.Popen(['open', installer_path])
             threading.Timer(0.5, lambda: os._exit(0)).start()
         elif os.name == 'nt':
-            # Windows: 启动 setup.exe (静默安装) 并退出当前程序
             subprocess.Popen([installer_path, '/SILENT', '/SP-'], creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP)
-            # 延时一点退出，保证子进程启动
             threading.Timer(0.5, lambda: os._exit(0)).start()
             
         return jsonify({"message": "更新下载完成，即将自动重启覆盖安装！"})
@@ -118,7 +124,6 @@ def upload_file():
     SESSION_FILES[session_id] = file_path
     
     try:
-        # data_only=True 获取公式计算后的实际值用于前端显示
         wb = openpyxl.load_workbook(file_path, data_only=True)
         ws = wb.active
         
@@ -126,7 +131,6 @@ def upload_file():
         headerRowData = []
         bodyData = []
         
-        # 查找表头
         for row in ws.iter_rows():
             found = False
             for cell in row:
@@ -136,14 +140,13 @@ def upload_file():
                     break
             if found:
                 headerRowIndex = row[0].row
-                # openpyxl 的 column 索引从 1 开始
                 headerRowData = [""] * (ws.max_column + 1)
                 for cell in row:
                     headerRowData[cell.column] = str(cell.value).strip() if cell.value is not None else ""
                 break
                 
         if headerRowIndex == -1:
-            return jsonify({"error": "未能识别出包含“教师编号”或“姓名”的表头行，请检查文件格式"}), 400
+            return jsonify({"error": "未能识别出包含“编号”或“姓名”的表头行，请检查文件格式"}), 400
             
         idIndex = -1
         nameIndex = -1
@@ -151,12 +154,10 @@ def upload_file():
             if '编号' in h: idIndex = i
             if '姓名' in h: nameIndex = i
             
-        # 遍历数据行
         for row in ws.iter_rows(min_row=headerRowIndex + 1):
             rowArr = [""] * (ws.max_column + 1)
             for cell in row:
                 if cell.value is not None:
-                    # 日期格式兼容处理
                     if hasattr(cell.value, 'strftime'):
                         rowArr[cell.column] = cell.value.strftime('%Y/%m/%d')
                     else:
@@ -194,7 +195,6 @@ def export_file():
     file_path = SESSION_FILES[session_id]
     
     try:
-        # 在应用更改时，不使用 data_only=True 以完美保留原有公式、格式、批注和样式
         wb = openpyxl.load_workbook(file_path)
         ws = wb.active
         
@@ -203,7 +203,6 @@ def export_file():
             c = int(update['colNum'])
             val = update['value']
             
-            # 智能转换数字类型
             if val.strip() and val.strip().replace('.', '', 1).isdigit():
                 try:
                     val = float(val) if '.' in val else int(val)
@@ -233,12 +232,9 @@ if __name__ == '__main__':
     port = find_free_port()
     url = f"http://127.0.0.1:{port}"
     print(f"==========================================")
-    print(f"卓越 Excel 更新工具服务端已启动！")
+    print(f"教师信息更新工具服务端已启动！")
     print(f"正在浏览器中打开: {url}")
     print(f"==========================================")
     
-    # 延迟 1.5 秒自动打开浏览器
     threading.Timer(1.5, lambda: webbrowser.open_new(url)).start()
-    
-    # 启动 Flask 服务器
     app.run(host='127.0.0.1', port=port, debug=False)
