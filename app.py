@@ -29,7 +29,7 @@ app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 SESSION_FILES = {}
 
 # 自动更新配置参数
-CURRENT_VERSION = "v1.0.17"  # 把版本号提上去
+CURRENT_VERSION = "v1.0.18"  # 把版本号提上去
 GITHUB_API_URL = "https://api.github.com/repos/Wemu5890/mac/releases/latest"
 
 # 创建全局取消 SSL 验证的上下文，绕过底层证书丢失导致的 500 错误
@@ -228,13 +228,30 @@ def find_free_port():
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s.getsockname()[1]
 
+def open_as_app(url):
+    """尝试以无边框的独立 App 模式打开网页"""
+    try:
+        if sys.platform == 'win32':
+            # Windows：静默调用系统自带的 Edge 开启无边框应用模式
+            subprocess.Popen(f'start msedge --app="{url}"', shell=True)
+        elif sys.platform == 'darwin':
+            # Mac：调用 Chrome 开启无边框应用模式
+            subprocess.Popen(['open', '-n', '-a', 'Google Chrome', '--args', f'--app={url}'])
+        else:
+            webbrowser.open_new(url)
+    except Exception:
+        webbrowser.open_new(url)
+
 if __name__ == '__main__':
     port = find_free_port()
     url = f"http://127.0.0.1:{port}"
     print(f"==========================================")
     print(f"教师信息更新工具服务端已启动！")
-    print(f"正在浏览器中打开: {url}")
+    print(f"正在以独立 App 模式打开: {url}")
     print(f"==========================================")
     
-    threading.Timer(1.5, lambda: webbrowser.open_new(url)).start()
+    # 延迟 1.5 秒调用我们新写的 App 模式函数
+    threading.Timer(1.5, lambda: open_as_app(url)).start()
+    
+    # 启动 Flask 服务器
     app.run(host='127.0.0.1', port=port, debug=False)
