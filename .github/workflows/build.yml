@@ -32,7 +32,7 @@ jobs:
     - name: Build Executable via PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --noconfirm --onefile --windowed --icon=logo.ico --add-data 'index.html;.' --add-data 'app.js;.' --add-data 'style.css;.' --name 'app' app.py
+        pyinstaller --noconfirm --onefile --windowed --icon=logo.ico --add-data 'index.html;.' --add-data 'app.js;.' --add-data 'style.css;.' --name '教师信息更新工具' app.py
 
     - name: Build Executable via PyInstaller (macOS)
       if: matrix.os == 'macos-latest'

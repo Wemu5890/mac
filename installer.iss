@@ -4,7 +4,7 @@
 #define MyAppName "教师信息更新工具"
 #define MyAppVersion "1.0.9"
 #define MyAppPublisher "运营"
-#define MyAppExeName "app.exe"
+#define MyAppExeName "教师信息更新工具.exe"
 
 [Setup]
 ; AppId uniquely identifies this application.
@@ -52,7 +52,9 @@ function InitializeSetup(): Boolean;
 var
   ResultCode: Integer;
 begin
-  // 在安装包启动的第一秒，不管三七二十一，直接调用 Windows 底层命令强杀旧进程！
+  // 强杀旧版通用命名（为了这次能顺利覆盖旧软件）
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM app.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // 强杀新版专属命名（为了以后的自动更新铺路）
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Result := True;
 end;
