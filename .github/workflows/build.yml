@@ -27,7 +27,7 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flask openpyxl pyinstaller
+        pip install flask openpyxl pyinstaller Pillow
 
     - name: Build Executable via PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
