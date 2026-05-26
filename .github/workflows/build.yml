@@ -32,12 +32,12 @@ jobs:
     - name: Build Executable via PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --noconfirm --onefile --windowed --add-data "index.html;." --add-data "app.js;." --add-data "style.css;." --name "app" app.py
+        pyinstaller --noconfirm --onefile --windowed --add-data 'index.html;.' --add-data 'app.js;.' --add-data 'style.css;.' --name 'app' app.py
 
     - name: Build Executable via PyInstaller (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        pyinstaller --noconfirm --onedir --windowed --add-data "index.html:." --add-data "app.js:." --add-data "style.css:." --name "app_mac" app.py
+        pyinstaller --noconfirm --onedir --windowed --add-data 'index.html:.' --add-data 'app.js:.' --add-data 'style.css:.' --name 'app_mac' app.py
         cd dist
         zip -r app_mac.zip app_mac.app
 

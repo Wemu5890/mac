@@ -15,7 +15,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 ; 默认打包到上层目录的 release 文件夹
-OutputDir=..\release
+OutputDir=release
 OutputBaseFilename=卓越数据更新中心_Setup
 Compression=lzma
 SolidCompression=yes
