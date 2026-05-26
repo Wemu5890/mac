@@ -28,7 +28,7 @@ app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 SESSION_FILES = {}
 
 # 自动更新配置参数 (需替换为您真实的 GitHub 信息)
-CURRENT_VERSION = "v1.0.6"
+CURRENT_VERSION = "v1.0.8"
 GITHUB_API_URL = "https://api.github.com/repos/Wemu5890/mac/releases/latest"
 
 @app.route('/api/check_update')
