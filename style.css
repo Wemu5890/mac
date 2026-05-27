@@ -454,3 +454,44 @@ input[type="checkbox"] {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* 新增数据的哑光绿高亮 */
+.new-data-row td {
+    background-color: #ecfdf5 !important; /* 极简科技绿背景 */
+    position: relative;
+}
+.new-data-row td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #10b981; /* 左侧强调色标 */
+}
+
+/* 顶部优雅的 Toast 提示框 */
+.toast-notification {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    color: #1e293b;
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+    z-index: 9999;
+    transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid #e2e8f0;
+}
+.toast-notification.show {
+    top: 32px;
+}
+.toast-icon {
+    color: #10b981;
+}

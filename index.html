@@ -55,7 +55,7 @@
                             <path d="M16 8l-8 8" stroke="#2563EB"></path>
                         </svg>
                     </div>
-                    <h2>拖拽上传教师信息文件</h2>
+                    <h2>拖拽上传系统模板表格</h2>
                     <p>支持 .xlsx / .xls，最大支持 50MB</p>
                     <input type="file" id="file-input" accept=".xlsx, .xls" hidden>
                 </div>
@@ -93,7 +93,11 @@
                         <button id="btn-parse-text" class="btn btn-primary">✨ 识别并填入</button>
                     </div>
                     <div class="global-actions">
-                        <button id="btn-update-from-excel" class="btn btn-success">📥 导入Excel进行比对</button>
+                        <button id="btn-reupload-template" class="btn btn-outline" style="margin-right: 12px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+                            刷新重新上传模板表
+                        </button>
+                        <button id="btn-update-from-excel" class="btn btn-success">📥 上传更新表</button>
                         <input type="file" id="update-file-input" accept=".xlsx, .xls" style="display: none;">
                         <button id="btn-export" class="btn btn-success">📤 导出修改后的Excel</button>
                     </div>
@@ -125,6 +129,45 @@
                 <div class="status-bar">
                     <span id="row-count" class="badge">总行数: 0</span>
                     <span id="selected-count" class="badge">已选: 0</span>
+                    <span id="new-teachers-count" class="badge" style="background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: none;">✨ 新增教师: 0</span>
+                </div>
+            </section>
+            
+            <!-- 学生考号与教学班生成模块 -->
+            <section id="student-section" class="card workspace-wrapper" style="margin-top: 32px; padding: 32px;">
+                <div style="border-bottom: 1px solid #E2E8F0; padding-bottom: 16px; margin-bottom: 24px;">
+                    <h2 style="margin: 0; color: var(--primary-color); font-size: 1.5rem; display: flex; align-items: center; gap: 8px;">
+                        🎓 教学班学生考号一键生成
+                    </h2>
+                    <p style="color: var(--text-muted); margin: 8px 0 0 0; font-size: 0.95rem;">
+                        依次上传【导入模板】、【学生总表】和【分班名单】(支持 xls/xlsx)。系统将全自动跨表提取信息、计算 4 位考号（班级在前）并完美填入模板导出。
+                    </p>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+                    <div class="upload-card" id="student-template-zone" style="padding: 2rem 1rem; border-color: #CBD5E1; min-height: 120px; cursor: pointer;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 1.1rem;">1. 上传导入模板</h3>
+                        <span id="name-student-template" style="color: var(--text-muted); font-size: 0.9rem;">未选择文件 (.xlsx)</span>
+                        <input type="file" id="input-student-template" accept=".xlsx" hidden>
+                    </div>
+                    
+                    <div class="upload-card" id="student-master-zone" style="padding: 2rem 1rem; border-color: #CBD5E1; min-height: 120px; cursor: pointer;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 1.1rem;">2. 上传学生总表</h3>
+                        <span id="name-student-master" style="color: var(--text-muted); font-size: 0.9rem;">未选择文件 (.xlsx/.xls)</span>
+                        <input type="file" id="input-student-master" accept=".xlsx, .xls" hidden>
+                    </div>
+                    
+                    <div class="upload-card" id="student-class-zone" style="padding: 2rem 1rem; border-color: #CBD5E1; min-height: 120px; cursor: pointer;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 1.1rem;">3. 上传分班名单</h3>
+                        <span id="name-student-class" style="color: var(--text-muted); font-size: 0.9rem;">未选择文件 (如奥1奥2.xls)</span>
+                        <input type="file" id="input-student-class" accept=".xlsx, .xls" hidden>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 32px; text-align: right;">
+                    <button id="btn-student-generate" class="btn btn-primary" style="padding: 0 40px; font-size: 1.1rem; height: 50px;">
+                        ⚡ 开始智能匹配并生成模板
+                    </button>
                 </div>
             </section>
         </main>

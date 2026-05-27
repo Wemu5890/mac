@@ -38,41 +38,64 @@ async function checkForUpdates() {
                     const res = await fetch('/api/do_update', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({download_url: data.download_url})
+                        body: JSON.stringify({ download_url: data.download_url })
                     });
-                    const resData = await res.json();
-                    if (resData.error) throw new Error(resData.error);
-                    btnConfirm.textContent = '即将重启...';
+                    const updateRes = await res.json();
+                    alert(updateRes.message || '更新指令下发成功！');
                 } catch (e) {
-                    alert('更新失败: ' + e.message);
+                    alert('下载更新失败：' + e.message);
+                } finally {
+                    modal.classList.add('hidden');
                     btnConfirm.disabled = false;
-                    btnConfirm.textContent = '重试';
+                    btnConfirm.textContent = '立即更新';
                 }
             };
         }
     } catch (e) {
-        console.log('检查更新失败', e);
+        console.error('检查更新失败', e);
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 启动即检查更新
     checkForUpdates();
 
-    const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
-    
-    dropZone.addEventListener('click', () => fileInput.click());
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
-    
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) handleFile(e.target.files[0]);
-    });
+    const dropZone = document.getElementById('drop-zone');
+
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('click', function(e) {
+            e.target.value = ''; 
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+    }
+
+    const btnReupload = document.getElementById('btn-reupload-template');
+    if (btnReupload) {
+        btnReupload.addEventListener('click', () => {
+            fileInput.click();
+        });
+    }
 
     document.getElementById('btn-batch-apply').addEventListener('click', handleBatchApply);
     document.getElementById('btn-export').addEventListener('click', handleExport);
@@ -92,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 初始化操作引导
     const driver = window.driver.js.driver;
     const tour = driver({
         showProgress: true,
@@ -105,19 +127,19 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 element: '#drop-zone',
                 popover: {
-                    title: '第一步：导入表格',
-                    description: '将需要处理的 Excel 文件拖拽到这里，或者点击选择文件。系统会瞬间完成解析。',
+                    title: '第一步：上传系统模板',
+                    description: '点击或拖拽您需要维护的教师基础信息标准 Excel 模板，系统将闪电完成底层解析架构搭建。',
                     side: 'bottom',
                     align: 'center'
                 }
             },
             {
-                element: '.text-parse-tools',
+                element: '#btn-update-from-excel',
                 popover: {
-                    title: '第二步：文本智能填入',
-                    description: '把提取好的纯文本（含姓名和手机号）粘贴到输入框，点击“识别并填入”，系统会自动匹配表格并补全班级信息。',
+                    title: '第二步：上传更新比对表',
+                    description: '点击此处导入老师给您的各种非标准不规则表格（如特定排班表、更新表），系统将全自动提取增量、模糊匹配，自动将新教师高亮置顶！',
                     side: 'bottom',
-                    align: 'start'
+                    align: 'center'
                 }
             },
             {
@@ -133,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 element: '#btn-export',
                 popover: {
                     title: '第四步：导出成片',
-                    description: '确认数据全部更新无误后，点击这里即可导出最新的 Excel 文件，原生样式会被 100% 保留！',
+                    description: '确认数据全部更新无误后，点击这里即可导出最新的 Excel 文件，原生样式会被 100% 保联！',
                     side: 'left',
                     align: 'center'
                 }
@@ -141,7 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     });
 
-    // 绑定点击事件
     const btnGuide = document.getElementById('btn-start-guide');
     if (btnGuide) {
         btnGuide.addEventListener('click', () => {
@@ -149,19 +170,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 表格实时全局筛选功能
     const tableFilterInput = document.getElementById('global-table-filter');
     if (tableFilterInput) {
         tableFilterInput.addEventListener('input', function(e) {
-            // 获取用户输入的关键字并转为小写
             const searchTerm = e.target.value.toLowerCase().trim();
-            // 获取表格主体中的所有数据行
             const tableRows = document.querySelectorAll('#table-body tr'); 
             
             tableRows.forEach(row => {
-                // 将整行的文本内容提取并转小写
                 const rowText = row.textContent.toLowerCase();
-                // 如果整行文本包含关键字，则显示；否则使用 display: none 隐藏
                 if (rowText.includes(searchTerm)) {
                     row.style.display = '';
                 } else {
@@ -171,12 +187,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 绑定隐藏的 file input 导入更新功能
     const btnUpdateExcel = document.getElementById('btn-update-from-excel');
     const updateFileInput = document.getElementById('update-file-input');
     
     if (btnUpdateExcel && updateFileInput) {
         btnUpdateExcel.addEventListener('click', () => updateFileInput.click());
+        
+        updateFileInput.addEventListener('click', function(e) {
+            e.target.value = ''; 
+        });
+
         updateFileInput.addEventListener('change', async (e) => {
             if (!e.target.files.length) return;
             const file = e.target.files[0];
@@ -186,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('file', file);
 
             try {
-                // 复用后端极速解析接口
                 const response = await fetch('/api/upload', { method: 'POST', body: formData });
                 const result = await response.json();
                 
@@ -195,92 +214,179 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newHeaders = result.headerRowData;
                 const newData = result.bodyData;
 
-                // 1. 智能模糊识别新表的列号
-                let newNameCol = -1, newPhoneCol = -1, newSubjectCol = -1, newGradeCol = -1, newClassCol = -1, newRoleCol = -1;
+                let newIdCol = -1, newNameCol = -1, newPhoneCol = -1, newSubjectCol = -1, newGradeCol = -1, newClassCol = -1, newRoleCol = -1;
                 newHeaders.forEach((h, i) => {
                     const text = String(h || '').trim();
-                    if (text.includes('姓名') || text === '老师') newNameCol = i;
-                    else if (text.includes('手机') || text.includes('电话')) newPhoneCol = i;
+                    if (text.includes('编号') || text.includes('工号') || text.includes('序号')) newIdCol = i;
+                    else if (text.includes('姓名') || text === '老师') newNameCol = i;
+                    else if (text.includes('手机') || text.includes('电话') || text.includes('联系方式')) newPhoneCol = i;
                     else if (text.includes('学科') && !text.includes('是否')) newSubjectCol = i;
                     else if (text.includes('年级') && !text.includes('是否')) newGradeCol = i;
-                    else if (text.includes('班级') && !text.includes('是否')) newClassCol = i;
+                    else if (text.includes('班级') || text === '班') newClassCol = i;
                     else if (text.includes('角色') || text.includes('管理员')) newRoleCol = i;
                 });
 
-                if (newNameCol === -1 && newPhoneCol === -1) {
-                    alert('匹配失败：更新的表格中未找到“姓名”或“手机”列，无法进行身份比对！');
+                if (newIdCol === -1 && newNameCol === -1) {
+                    alert('匹配失败：更新的表格中未找到“编号”或“姓名”列，无法进行身份比对！');
                     hideLoading();
                     return;
                 }
 
-                // 2. 遍历当前 DOM 表格进行精准覆盖
-                const tableRows = document.querySelectorAll('#table-body tr');
+                let domIdCol = -1, domNameCol = -1, domPhoneCol = -1, domSubjIdx = -1, domGradeIdx = -1, domClassIdx = -1, domAdminIdx = -1;
+                headerRowData.forEach((h, i) => {
+                    const t = String(h || '').trim();
+                    if (t.includes('编号') || t.includes('工号') || t.includes('序号')) domIdCol = i;
+                    if (t.includes('姓名') || t === '老师') domNameCol = i;
+                    if (t.includes('手机') || t.includes('电话') || t.includes('联系方式') || t.includes('号码')) domPhoneCol = i;
+                    if (t.includes('学科') && !t.includes('是否')) domSubjIdx = i;
+                    if (t.includes('年级') && !t.includes('是否')) domGradeIdx = i;
+                    if (t.includes('行政班级') || t === '班级') domClassIdx = i;
+                    if (t.includes('是否管理员') || t === '角色') domAdminIdx = i;
+                });
+
                 let updateCount = 0;
+                let addCount = 0;
+                let virtualRowCounter = -1;
 
-                tableRows.forEach(tr => {
-                    let currName = '', currPhone = '';
-                    const ths = document.querySelectorAll('#table-head-row th');
-                    ths.forEach((th, idx) => {
-                        if (th.textContent.includes('姓名')) currName = (tr.cells[idx]?.textContent || '').trim();
-                        if (th.textContent.includes('手机')) currPhone = (tr.cells[idx]?.textContent || '').trim();
-                    });
+                newData.forEach(rowObj => {
+                    const row = rowObj.cells;
+                    const rowId = newIdCol !== -1 ? String(row[newIdCol] || '').trim() : '';
+                    const rowName = newNameCol !== -1 ? String(row[newNameCol] || '').trim() : '';
 
-                    // 在新数据中寻找匹配的人（优先手机号，其次姓名）
-                    const matchedRowObj = newData.find(rowObj => {
-                        const row = rowObj.cells;
-                        const rowName = newNameCol !== -1 ? String(row[newNameCol] || '').trim() : '';
-                        const rowPhone = newPhoneCol !== -1 ? String(row[newPhoneCol] || '').trim() : '';
-                        if (currPhone && rowPhone && currPhone === rowPhone) return true;
-                        if (currName && rowName && currName === rowName) return true;
-                        return false;
-                    });
+                    let matchedBodyRow = null;
+                    for (let i = 0; i < bodyData.length; i++) {
+                        const bRow = bodyData[i].cells;
+                        const currId = domIdCol !== -1 ? String(bRow[domIdCol] || '').trim() : '';
+                        const currName = domNameCol !== -1 ? String(bRow[domNameCol] || '').trim() : '';
 
-                    if (matchedRowObj) {
-                        const matchedRow = matchedRowObj.cells;
+                        if (domIdCol !== -1 && newIdCol !== -1 && currId && rowId && currId === rowId) {
+                            matchedBodyRow = bodyData[i];
+                            break;
+                        }
+                        if (domNameCol !== -1 && newNameCol !== -1 && currName && rowName && currName === rowName) {
+                            matchedBodyRow = bodyData[i];
+                            break;
+                        }
+                    }
+
+                    let parsedSubj = newSubjectCol !== -1 && row[newSubjectCol] ? row[newSubjectCol].toString().trim() : '';
+                    let parsedGrade = newGradeCol !== -1 && row[newGradeCol] ? row[newGradeCol].toString().trim() : '';
+                    let parsedClass = newClassCol !== -1 && row[newClassCol] ? row[newClassCol].toString().replace(/[oO]/ig, '0').replace('班', '').trim() : '';
+                    let parsedRole = newRoleCol !== -1 && row[newRoleCol] ? row[newRoleCol].toString().trim() : '';
+                    let parsedPhone = newPhoneCol !== -1 && row[newPhoneCol] ? row[newPhoneCol].toString().trim() : '';
+
+                    let isAll = false;
+                    
+                    if (parsedSubj) {
+                        const parts = parsedSubj.split(/[,，\s]+/).filter(Boolean);
+                        if (parts.length >= 2 || parsedSubj.includes('全部')) isAll = true;
+                    }
+                    if (parsedGrade) {
+                        const parts = parsedGrade.split(/[,，\s]+/).filter(Boolean);
+                        if (parts.length >= 2 || parsedGrade.includes('全部')) isAll = true;
+                    }
+                    
+                    if (isAll) {
+                        parsedSubj = '全部学科';
+                        parsedGrade = '全部年级';
+                        parsedRole = '是'; // 连锁触发管理员
+                    }
+                    
+                    let adminResult = '';
+                    if (parsedRole.includes('管理员') || parsedRole === '是') {
+                        adminResult = headerRowData[domAdminIdx] === '角色' ? '管理员' : '是';
+                    }
+
+                    if (matchedBodyRow) {
                         let rowUpdated = false;
+                        const targetCells = matchedBodyRow.cells;
                         
-                        // 定位当前DOM的列索引用于回写
-                        let domSubjIdx=-1, domGradeIdx=-1, domClassIdx=-1, domAdminIdx=-1;
-                        ths.forEach((th, idx) => {
-                            const t = th.textContent.trim();
-                            if (t.includes('学科') && !t.includes('是否')) domSubjIdx = idx;
-                            if (t.includes('年级') && !t.includes('是否')) domGradeIdx = idx;
-                            if (t.includes('行政班级') || t === '班级') domClassIdx = idx;
-                            if (t.includes('是否管理员') || t === '角色') domAdminIdx = idx;
-                        });
-
-                        // 填入数据并执行简单的清洗过滤
-                        if (newSubjectCol !== -1 && domSubjIdx !== -1 && matchedRow[newSubjectCol]) {
-                            let val = matchedRow[newSubjectCol].toString();
-                            if (val !== '全部学科') { tr.cells[domSubjIdx].textContent = val; rowUpdated = true; }
+                        if (domPhoneCol !== -1 && parsedPhone) { targetCells[domPhoneCol] = parsedPhone; rowUpdated = true; }
+                        
+                        if (domSubjIdx !== -1 && parsedSubj) {
+                            if (isAll || parsedSubj !== '全部学科') { targetCells[domSubjIdx] = parsedSubj; rowUpdated = true; }
                         }
-                        if (newGradeCol !== -1 && domGradeIdx !== -1 && matchedRow[newGradeCol]) {
-                            let val = matchedRow[newGradeCol].toString();
-                            if (val !== '全部年级') { tr.cells[domGradeIdx].textContent = val; rowUpdated = true; }
+                        
+                        if (domGradeIdx !== -1 && parsedGrade) {
+                            if (isAll || parsedGrade !== '全部年级') { targetCells[domGradeIdx] = parsedGrade; rowUpdated = true; }
                         }
-                        if (newClassCol !== -1 && domClassIdx !== -1 && matchedRow[newClassCol]) {
-                            let val = matchedRow[newClassCol].toString().replace(/[oO]/ig, '0').replace('班', '');
-                            if (val !== '全部') { tr.cells[domClassIdx].textContent = val; rowUpdated = true; }
+                        
+                        if (domClassIdx !== -1 && parsedClass && parsedClass !== '全部') {
+                            targetCells[domClassIdx] = parsedClass; rowUpdated = true; 
                         }
-                        if (newRoleCol !== -1 && domAdminIdx !== -1 && matchedRow[newRoleCol]) {
-                            let val = matchedRow[newRoleCol].toString();
-                            if (val.includes('管理员') || val === '是') {
-                                tr.cells[domAdminIdx].textContent = ths[domAdminIdx].textContent === '角色' ? '管理员' : '是';
-                                rowUpdated = true;
-                            }
+                        
+                        if (domAdminIdx !== -1 && adminResult) {
+                            targetCells[domAdminIdx] = adminResult; rowUpdated = true;
                         }
 
                         if (rowUpdated) {
-                            tr.style.transition = 'background-color 0.5s';
-                            tr.style.backgroundColor = '#dcfce3'; // 绿色高亮
-                            setTimeout(() => tr.style.backgroundColor = '', 3000);
+                            matchedBodyRow._isUpdated = true;
                             updateCount++;
                         }
+                    } else {
+                        // 全新添加的教师，打上标记并追加
+                        const newCells = new Array(headerRowData.length).fill('');
+                        if (domIdCol !== -1 && newIdCol !== -1) newCells[domIdCol] = rowId;
+                        if (domNameCol !== -1 && newNameCol !== -1) newCells[domNameCol] = rowName;
+                        
+                        if (domPhoneCol !== -1 && parsedPhone) newCells[domPhoneCol] = parsedPhone;
+                        if (domSubjIdx !== -1 && parsedSubj) {
+                            if (isAll || parsedSubj !== '全部学科') newCells[domSubjIdx] = parsedSubj;
+                        }
+                        if (domGradeIdx !== -1 && parsedGrade) {
+                            if (isAll || parsedGrade !== '全部年级') newCells[domGradeIdx] = parsedGrade;
+                        }
+                        if (domClassIdx !== -1 && parsedClass && parsedClass !== '全部') newCells[domClassIdx] = parsedClass;
+                        if (domAdminIdx !== -1 && adminResult) newCells[domAdminIdx] = adminResult;
+                        
+                        bodyData.push({
+                            excelRowNumber: virtualRowCounter,
+                            cells: newCells,
+                            _isNew: true
+                        });
+                        virtualRowCounter--;
+                        addCount++;
                     }
                 });
 
-                updateFileInput.value = ''; // 清空选择，允许重复传同名文件
-                alert(`比对完成！成功利用新表格更新了 ${updateCount} 名教师的数据。`);
+                if (addCount > 0) {
+                    bodyData.sort((a, b) => {
+                        if (a._isNew && !b._isNew) return -1;
+                        if (!a._isNew && b._isNew) return 1;
+                        return 0;
+                    });
+                }
+
+                renderWorkspace(headerRowData, bodyData);
+                
+                const tableRows = document.querySelectorAll('#table-body tr');
+                tableRows.forEach(tr => {
+                    const rowObj = bodyData.find(r => r.excelRowNumber == tr.dataset.excelRow);
+                    if (rowObj && rowObj._isUpdated) {
+                        tr.style.transition = 'background-color 0.5s';
+                        tr.style.backgroundColor = '#dcfce3'; 
+                        setTimeout(() => tr.style.backgroundColor = '', 3000);
+                        delete rowObj._isUpdated; 
+                    }
+                });
+
+                if (addCount > 0) {
+                    showToast(addCount);
+                }
+
+                const newCountBadge = document.getElementById('new-teachers-count');
+                if (newCountBadge) {
+                    if (addCount > 0) {
+                        newCountBadge.textContent = `✨ 新增教师: ${addCount}`;
+                        newCountBadge.style.display = 'inline-flex';
+                    } else {
+                        newCountBadge.textContent = '✨ 新增教师: 0';
+                        newCountBadge.style.display = 'none';
+                    }
+                }
+
+                updateFileInput.value = ''; 
+                alert(`比对完成！成功利用新表格更新了 ${updateCount} 名现有教师的数据${addCount > 0 ? `，并新增了 ${addCount} 名教师` : ''}。`);
             } catch (err) {
                 alert('解析更新表格失败：' + err.message);
             } finally {
@@ -295,6 +401,12 @@ let currentSessionId = null;
 async function handleFile(file) {
     showLoading('正在上传并解析 Excel 文件，请稍候...');
     
+    const newCountBadge = document.getElementById('new-teachers-count');
+    if (newCountBadge) {
+        newCountBadge.textContent = '✨ 新增教师: 0';
+        newCountBadge.style.display = 'none';
+    }
+    
     const formData = new FormData();
     formData.append('file', file);
 
@@ -304,22 +416,22 @@ async function handleFile(file) {
             body: formData
         });
         
-        const data = await response.json();
+        const result = await response.json();
         
-        if (!response.ok) {
-            throw new Error(data.error || '上传失败');
+        if (result.error) {
+            alert(result.error);
+            return;
         }
-        
-        currentSessionId = data.sessionId;
-        headerRowData = data.headerRowData;
-        bodyData = data.bodyData;
-        
+
+        currentSessionId = result.sessionId;
+        headerRowData = result.headerRowData;
+        bodyData = result.bodyData;
+
         renderWorkspace(headerRowData, bodyData);
         
         document.getElementById('upload-section').classList.add('hidden');
         document.getElementById('workspace-section').classList.remove('hidden');
         
-        // --- 智能异常检测 ---
         let idColNum = -1, phoneColNum = -1;
         headerRowData.forEach((h, i) => {
             const txt = String(h || '').trim();
@@ -364,23 +476,23 @@ async function handleFile(file) {
             notifyCard.style.fontSize = '14px';
             notifyCard.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
             const workspaceTopBar = document.querySelector('.workspace-top-bar');
-            workspaceTopBar.parentNode.insertBefore(notifyCard, workspaceTopBar);
+            if (workspaceTopBar) workspaceTopBar.parentNode.insertBefore(notifyCard, workspaceTopBar);
         }
         
-        if (duplicateIds === 0 && invalidPhones === 0) {
-            notifyCard.style.backgroundColor = '#ecfdf5';
-            notifyCard.style.color = '#065f46';
-            notifyCard.style.border = '1px solid #10b981';
-            notifyCard.textContent = `✅ 已成功加载并识别 ${bodyData.length} 条教师数据，一切正常。`;
+        if (duplicateIds > 0 || invalidPhones > 0) {
+            notifyCard.style.backgroundColor = '#FEF9C3';
+            notifyCard.style.color = '#713F12';
+            notifyCard.style.border = '1px solid #FEF08A';
+            notifyCard.innerHTML = `⚠️ 检测到表格数据存在潜在异常：系统已自动为您高亮标黄！ 其中包含 <strong>${duplicateIds}</strong> 处编号重复冲突， <strong>${invalidPhones}</strong> 处手机号格式不规范（非11位纯数字）。请核对修正后再行导出。`;
         } else {
-            notifyCard.style.backgroundColor = '#fff7ed';
-            notifyCard.style.color = '#9a3412';
-            notifyCard.style.border = '1px solid #f97316';
-            notifyCard.textContent = `✅ 成功识别 ${bodyData.length} 条数据。⚠️ 发现异常：${invalidPhones} 名教师手机号缺失/格式错误，${duplicateIds} 个教师编号重复。`;
+            notifyCard.style.backgroundColor = '#F0FDF4';
+            notifyCard.style.color = '#166534';
+            notifyCard.style.border = '1px solid #BBF7D0';
+            notifyCard.innerHTML = `✨ 体检完成：当前标准模板表格未检测出任何编号冲突或手机号异常，数据格式非常健康！`;
         }
         
     } catch (err) {
-        alert('解析失败: ' + err.message);
+        alert('解析系统模板文件失败：' + err.message);
     } finally {
         hideLoading();
     }
@@ -413,16 +525,11 @@ function renderWorkspace(headers, body) {
         
         const th = document.createElement('th');
         th.textContent = header;
-        
-        // 增加交互样式
         th.style.cursor = 'pointer';
         th.title = `点击统一修改全表【${header}】列`;
         
-        // 绑定点击整列覆盖事件
         th.addEventListener('click', () => {
             const newValue = prompt(`请输入你要为【${header}】统一设置的值：\n(确认后将应用到该列所有行。留空则清空该列，点击取消则放弃修改)`);
-            
-            // newValue 为 null 代表用户点击了取消
             if (newValue !== null) {
                 const tbody = document.getElementById('table-body');
                 const rows = tbody.querySelectorAll('tr');
@@ -430,13 +537,12 @@ function renderWorkspace(headers, body) {
                     const td = tr.querySelector(`td[data-col-num="${colNum}"]`);
                     if (td) {
                         td.textContent = newValue;
-                        
-                        // 增加修改成功后的渐变高亮反馈
                         td.style.transition = 'background-color 0.5s';
                         td.style.backgroundColor = '#dcfce3';
                         setTimeout(() => td.style.backgroundColor = '', 1500);
                     }
                 });
+                alert(`整列覆盖完成！所有行的【${header}】已成功统一修改为: "${newValue}"`);
             }
         });
         
@@ -456,6 +562,10 @@ function renderWorkspace(headers, body) {
     body.forEach((rowData) => {
         const tr = document.createElement('tr');
         tr.dataset.excelRow = rowData.excelRowNumber;
+        
+        if (rowData._isNew) {
+            tr.classList.add('new-data-row');
+        }
 
         const tdCb = document.createElement('td');
         const cb = document.createElement('input');
@@ -495,10 +605,9 @@ function updateSelectedCount() {
                 msgSpan.id = 'batch-selected-msg';
                 msgSpan.style.marginRight = '10px';
                 msgSpan.style.color = '#2563EB';
-                msgSpan.style.fontWeight = 'bold';
                 batchTools.insertBefore(msgSpan, batchTools.firstChild);
             }
-            msgSpan.textContent = `已选择 ${selectedCount} 项`;
+            msgSpan.innerHTML = `⚙️ 已勾选 <strong>${selectedCount}</strong> 行教师：`;
         } else {
             batchTools.style.display = 'none';
         }
@@ -507,16 +616,16 @@ function updateSelectedCount() {
 
 function handleBatchApply() {
     const colNum = document.getElementById('batch-column').value;
-    const newValue = document.getElementById('batch-value').value;
-
-    if (colNum === '') {
-        alert('请选择要批量更新的列');
+    const newValue = document.getElementById('batch-value').value.trim();
+    
+    if (!colNum) {
+        alert('请先选择要批量更新的列！');
         return;
     }
 
     const checkboxes = document.querySelectorAll('.row-checkbox:checked');
     if (checkboxes.length === 0) {
-        alert('请在表格中勾选要更新的行');
+        alert('请先勾选需要批量应用修改的教师数据行！');
         return;
     }
 
@@ -543,12 +652,22 @@ async function handleExport() {
     const updates = [];
     
     for (let row of tbody.children) {
-        const excelRowNumber = parseInt(row.dataset.excelRow);
+        let excelRowNumber = parseInt(row.dataset.excelRow);
+        
+        if (row.classList.contains('new-data-row')) {
+            if (excelRowNumber >= 0 || isNaN(excelRowNumber)) {
+                excelRowNumber = -1;
+            }
+        }
+        
         const tds = row.querySelectorAll('td[data-col-num]');
         tds.forEach(td => {
+            const colNum = parseInt(td.dataset.colNum);
+            if (colNum < 1 || isNaN(colNum)) return;
+            
             updates.push({
                 excelRowNumber: excelRowNumber,
-                colNum: parseInt(td.dataset.colNum),
+                colNum: colNum,
                 value: td.textContent
             });
         });
@@ -588,173 +707,83 @@ async function handleExport() {
     }
 }
 
-
-
-// ---------------- Text Parsing Logic ----------------
-
 function parseTextAndFill(lines, rawText) {
-    let nameColNum = -1;
-    let phoneColNum = -1;
-    let gradeColNum = -1;
-    let adminClassColNum = -1;
-    let subjectColNum = -1;
-    let isAdminColNum = -1;
+    let colSubjectIdx = -1, colGradeIdx = -1, colClassIdx = -1, colNameIdx = -1, colPhoneIdx = -1;
+    
+    headerRowData.forEach((h, i) => {
+        const text = String(h || '').trim();
+        if (text.includes('学科') && !text.includes('是否')) colSubjectIdx = i;
+        if (text.includes('年级') && !text.includes('是否')) colGradeIdx = i;
+        if (text.includes('班级') || text === '班') colClassIdx = i;
+        if (text.includes('姓名') || text === '老师') colNameIdx = i;
+        if (text.includes('手机') || text.includes('电话') || text.includes('联系方式') || text.includes('号码')) colPhoneIdx = i;
+    });
 
-    for (let i = 1; i < headerRowData.length; i++) {
-        const headerText = String(headerRowData[i] || '').replace(/\s+/g, '');
-        if (headerText.includes('姓名')) nameColNum = i;
-        else if (headerText.includes('手机')) phoneColNum = i;
-        else if (headerText.includes('年级') && !headerText.includes('是否')) gradeColNum = i;
-        else if (headerText.includes('行政班级') || (headerText === '班级' && adminClassColNum === -1)) adminClassColNum = i;
-        else if (headerText.includes('学科') && !headerText.includes('是否')) subjectColNum = i;
-        else if (headerText.includes('是否管理员') || headerText === '角色') isAdminColNum = i;
-    }
+    let currentSubject = '';
+    let currentGrade = '';
+    let currentClass = '';
 
-    if (phoneColNum === -1 && nameColNum === -1) {
-        alert('当前表格中没有找到包含“姓名”或“手机”的列，无法匹配数据！');
-        return;
-    }
+    const matchedTeacherCount = new Set();
 
-    const tbody = document.getElementById('table-body');
-    const trs = Array.from(tbody.children);
+    lines.forEach(line => {
+        if (!line) return;
 
-    function appendText(td, text) {
-        if (!td || !text) return;
-        const existing = td.textContent || '';
-        if (existing) {
-            // 兼容处理：把原有的中文顿号或中文逗号统一当成英文逗号处理
-            const normalizedExisting = existing.replace(/[、，]/g, ',');
-            const parts = normalizedExisting.split(',');
-            if (!parts.includes(text)) {
-                td.textContent = normalizedExisting + ',' + text;
-            }
-        } else {
-            td.textContent = text;
+        if (line.includes('学科:') || line.includes('学科：')) {
+            currentSubject = line.split(/[:：]/)[1].trim();
+            return;
         }
-    }
-
-    const teachers = trs.map(tr => {
-        const nameCell = nameColNum !== -1 ? tr.querySelector(`td[data-col-num="${nameColNum}"]`) : null;
-        const phoneCell = phoneColNum !== -1 ? tr.querySelector(`td[data-col-num="${phoneColNum}"]`) : null;
-        return {
-            tr: tr,
-            name: nameCell ? String(nameCell.textContent).trim().replace(/\s+/g, '') : '',
-            phone: phoneCell ? String(phoneCell.textContent).replace(/\D/g, '') : ''
-        };
-    }).filter(t => t.name || t.phone);
-
-    let lastTargetTeacher = null;
-    let matchedTeacherCount = new Set();
-
-    lines.forEach(lineNoSpaces => {
-        let matchedTeacher = teachers.find(t => {
-            if (t.phone && t.phone.length === 11) {
-                let fuzzyPhoneStr = t.phone.split('').map(char => {
-                    if (char === '0') return '[0oO]';
-                    if (char === '1') return '[1lI]';
-                    if (char === '5') return '[5sS]';
-                    if (char === '8') return '[8bB]';
-                    if (char === '2') return '[2zZ]';
-                    return char;
-                }).join('');
-                if (lineNoSpaces.match(new RegExp(fuzzyPhoneStr, 'i'))) return true;
-                if (lineNoSpaces.includes(t.phone)) return true;
-            }
-            return false;
-        });
-
-        if (!matchedTeacher) {
-            matchedTeacher = teachers.find(t => {
-                if (t.name && t.name.length >= 2 && lineNoSpaces.includes(t.name)) return true;
-                return false;
-            });
+        if (line.includes('年级:') || line.includes('年级：')) {
+            currentGrade = line.split(/[:：]/)[1].trim();
+            return;
         }
-
-        if (matchedTeacher) {
-            lastTargetTeacher = matchedTeacher;
-        } else {
-            matchedTeacher = lastTargetTeacher;
-        }
-
-        if (!matchedTeacher) return; 
-        
-        // 【第一步：提取并自动去重】（解决存在多个相同年级/学科的问题）
-        let gradeMatch = lineNoSpaces.match(/(全部年级|高中全部|初中全部|九年级|八年级|七年级|六年级|五年级|四年级|三年级|二年级|一年级|高三|高二|高一|初三|初二|初一)/g);
-        let gradeList = gradeMatch ? [...new Set(gradeMatch)] : [];
-
-        let subjectMatch = lineNoSpaces.match(/(全部学科|科学|语文|数学|英语|物理|化学|生物|政治|历史|地理|体育|美术|音乐|信息|道法|心理|劳动|劳技|综合|书法|通用技术)/g);
-        let subjectList = subjectMatch ? [...new Set(subjectMatch)] : [];
-
-        let classMatch = lineNoSpaces.match(/([0-9oOlIzZsSbB]+班|全部班级)/ig);
-        let classList = classMatch ? [...new Set(classMatch.map(c => {
-            if (c === '全部班级') return '全部';
-            return c.replace(/[oO]/ig, '0').replace(/[lI]/ig, '1').replace(/[zZ]/ig, '2').replace(/[sS]/ig, '5').replace(/[bB]/ig, '8').replace('班', '');
-        }))] : [];
-
-        // 【第二步：优先级覆盖】（如果同时存在“全部”和“具体值”，直接剔除“全部”）
-        const specificGrades = gradeList.filter(g => !g.includes('全部'));
-        if (specificGrades.length > 0) gradeList = specificGrades;
-
-        const specificSubjects = subjectList.filter(s => s !== '全部学科');
-        if (specificSubjects.length > 0) subjectList = specificSubjects;
-
-        const specificClasses = classList.filter(c => c !== '全部');
-        if (specificClasses.length > 0) classList = specificClasses;
-
-        // 将清洗后的数组转回字符串
-        let grade = gradeList.length > 0 ? gradeList.join(',') : null;
-        let subject = subjectList.length > 0 ? subjectList.join(',') : null;
-        let classes = classList;
-
-        // 识别管理员身份
-        const isAdmin = lineNoSpaces.includes('管理员') || (lineNoSpaces.includes('全部年级') && lineNoSpaces.includes('全部班级') && lineNoSpaces.includes('全部学科'));
-
-        // 【致命错误拦截】：如果当前这行文本（例如复制的表头）在表格里根本找不到对应的老师，直接跳过，绝对不能往下执行写入！
-        if (!matchedTeacher) {
+        if (line.includes('班级:') || line.includes('班级：')) {
+            currentClass = line.split(/[:：]/)[1].trim().replace(/[oO]/ig, '0').replace('班', '');
             return;
         }
 
-        // 【第三步：强制默认值兜底】
-        // 只有当身份是管理员，或者文本中明确带有“全部”字眼且被清洗为空时，才赋予兜底数据。防止普通老师的空白数据被错误覆写。
-        if (!grade && (isAdmin || lineNoSpaces.includes('全部年级'))) {
-            grade = '一年级';
-        }
-        if (!subject && (isAdmin || lineNoSpaces.includes('全部学科'))) {
-            subject = '数学';
-        }
-        if (classes.length === 0 && (isAdmin || lineNoSpaces.includes('全部班级'))) {
-            classes = ['01'];
+        let targetTeacherName = '';
+        if (line.includes('姓名:') || line.includes('姓名：')) {
+            targetTeacherName = line.split(/[:：]/)[1].trim();
+        } else if (!/^\d+$/.test(line) && line.length >= 2 && line.length <= 5) {
+            targetTeacherName = line;
         }
 
-        if (grade || classes.length > 0 || subject || isAdmin) {
-            const tr = matchedTeacher.tr;
-            let updated = false;
+        if (targetTeacherName) {
+            const trs = document.querySelectorAll('#table-body tr');
+            let matched = false;
 
-            if (grade && gradeColNum >= 0 && tr.cells[gradeColNum]) {
-                tr.cells[gradeColNum].textContent = grade;
-                updated = true;
-            }
-            if (classes && classes.length > 0 && adminClassColNum >= 0 && tr.cells[adminClassColNum]) {
-                tr.cells[adminClassColNum].textContent = classes.join(',');
-                updated = true;
-            }
-            if (subject && subjectColNum >= 0 && tr.cells[subjectColNum]) {
-                tr.cells[subjectColNum].textContent = subject;
-                updated = true;
-            }
-            if (isAdmin && isAdminColNum >= 0 && tr.cells[isAdminColNum]) {
-                // 如果该列表头是“角色”，则填入“管理员”；否则填入“是”
-                const isRoleCol = String(headerRowData[isAdminColNum] || '').replace(/\s+/g, '') === '角色';
-                tr.cells[isAdminColNum].textContent = isRoleCol ? '管理员' : '是';
-                updated = true;
-            }
+            trs.forEach(tr => {
+                const nameCell = tr.querySelector(`td[data-col-num="${colNameIdx}"]`);
+                if (nameCell && nameCell.textContent.trim() === targetTeacherName) {
+                    if (currentSubject && colSubjectIdx !== -1) tr.querySelector(`td[data-col-num="${colSubjectIdx}"]`).textContent = currentSubject;
+                    if (currentGrade && colGradeIdx !== -1) tr.querySelector(`td[data-col-num="${colGradeIdx}"]`).textContent = currentGrade;
+                    if (currentClass && colClassIdx !== -1) tr.querySelector(`td[data-col-num="${colClassIdx}"]`).textContent = currentClass;
+                    
+                    tr.style.transition = 'background-color 0.5s';
+                    tr.style.backgroundColor = '#dcfce3';
+                    setTimeout(() => tr.style.backgroundColor = '', 3000);
+                    matchedTeacherCount.add(tr);
+                    matched = true;
+                }
+            });
+            if (matched) return;
+        }
 
-            if (updated) {
-                tr.style.transition = 'background-color 0.5s';
-                tr.style.backgroundColor = '#dcfce3';
-                setTimeout(() => tr.style.backgroundColor = '', 3000);
-                matchedTeacherCount.add(tr);
-            }
+        if (/^\d{11}$/.test(line) && colPhoneIdx !== -1) {
+            const trs = document.querySelectorAll('#table-body tr');
+            trs.forEach(tr => {
+                const phoneCell = tr.querySelector(`td[data-col-num="${colPhoneIdx}"]`);
+                if (phoneCell && phoneCell.textContent.trim() === line) {
+                    if (currentSubject && colSubjectIdx !== -1) tr.querySelector(`td[data-col-num="${colSubjectIdx}"]`).textContent = currentSubject;
+                    if (currentGrade && colGradeIdx !== -1) tr.querySelector(`td[data-col-num="${colGradeIdx}"]`).textContent = currentGrade;
+                    if (currentClass && colClassIdx !== -1) tr.querySelector(`td[data-col-num="${colClassIdx}"]`).textContent = currentClass;
+                    
+                    tr.style.transition = 'background-color 0.5s';
+                    tr.style.backgroundColor = '#dcfce3';
+                    setTimeout(() => tr.style.backgroundColor = '', 3000);
+                    matchedTeacherCount.add(tr);
+                }
+            });
         }
     });
 
@@ -762,6 +791,88 @@ function parseTextAndFill(lines, rawText) {
         alert(`文本解析完成！成功根据姓名或手机号智能填入了 ${matchedTeacherCount.size} 名教师的数据。`);
     } else {
         const preview = rawText ? rawText.substring(0, 150).replace(/\n/g, ' ') : '空（未提取到任何文字）';
-        alert(`匹配失败！\n\n原因分析：提供的文本中没有找到能与表格里匹配的姓名或手机号，或未包含相关学科班级信息。\n\n解析的文字前150字为：\n${preview}...\n\n请检查粘贴的内容是否有误！`);
+        alert(`匹配失败！\n\n原因分析：提供的文本中没有找到能与表格里匹配的姓名或手机号，或未包含相关学科班级信息。\n\n请检查粘贴的内容是否有误！`);
     }
+}
+
+// === 学生教学班考号生成模块逻辑 ===
+const setupStudentZone = (zoneId, inputId, nameId) => {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const nameDisp = document.getElementById(nameId);
+    if (!zone || !input) return;
+    
+    zone.addEventListener('click', () => input.click());
+    input.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            nameDisp.textContent = e.target.files[0].name;
+            nameDisp.style.color = '#10B981';
+            nameDisp.style.fontWeight = '600';
+            zone.style.borderColor = '#10B981';
+            zone.style.backgroundColor = '#ecfdf5';
+        }
+    });
+};
+
+setupStudentZone('student-template-zone', 'input-student-template', 'name-student-template');
+setupStudentZone('student-master-zone', 'input-student-master', 'name-student-master');
+setupStudentZone('student-class-zone', 'input-student-class', 'name-student-class');
+
+const btnStudentGen = document.getElementById('btn-student-generate');
+if (btnStudentGen) {
+    btnStudentGen.addEventListener('click', async () => {
+        const tmplFile = document.getElementById('input-student-template').files[0];
+        const masterFile = document.getElementById('input-student-master').files[0];
+        const classFile = document.getElementById('input-student-class').files[0];
+
+        if (!tmplFile || !masterFile || !classFile) {
+            alert('请先将【导入模板】、【学生总表】和【分班名单】三个文件全部选中！');
+            return;
+        }
+
+        showLoading('正在全自动跨表联查、计算4位考号并合成模板...');
+        const formData = new FormData();
+        formData.append('template', tmplFile);
+        formData.append('master', masterFile);
+        formData.append('classlist', classFile);
+
+        try {
+            const response = await fetch('/api/process_students', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || '生成失败');
+            }
+            
+            const result = await response.json();
+            
+            if (result.error) {
+                throw new Error(result.error);
+            }
+
+            currentSessionId = result.sessionId;
+            headerRowData = result.headerRowData;
+            bodyData = result.bodyData;
+
+            renderWorkspace(headerRowData, bodyData);
+            
+            const uploadSection = document.getElementById('upload-section');
+            if (uploadSection) uploadSection.classList.add('hidden');
+            
+            const studentSection = document.getElementById('student-section');
+            if (studentSection) studentSection.style.display = 'none';
+            
+            const workspaceSection = document.getElementById('workspace-section');
+            if (workspaceSection) workspaceSection.classList.remove('hidden');
+            
+            alert('✨ 智能匹配完成！请在下方表格中复查，确认无误后点击“导出选中行数据”。');
+        } catch (err) {
+            alert('生成失败: ' + err.message);
+        } finally {
+            hideLoading();
+        }
+    });
 }
