@@ -40,8 +40,16 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         pyinstaller --noconfirm --onedir --windowed --icon=logo.icns --add-data 'logo.ico:.' --add-data 'index.html:.' --add-data 'app.js:.' --add-data 'style.css:.' --name '教师信息更新工具' app.py
-        cd dist
-        zip -r app_mac.zip "教师信息更新工具.app"
+
+    - name: Create Mac DMG Package
+      if: matrix.os == 'macos-latest'
+      run: |
+        # 1. 强行赋予底层文件最高执行权限，防止丢失
+        chmod -R 755 "dist/教师信息更新工具.app" || true
+        chmod +x "dist/教师信息更新工具.app/Contents/MacOS/教师信息更新工具" || true
+
+        # 2. 使用 hdiutil 制作原生的 DMG 镜像盘
+        hdiutil create -volname "教师信息更新工具" -srcfolder "dist/教师信息更新工具.app" -ov -format UDZO "dist/教师信息更新工具_Mac.dmg"
 
     - name: Compile Inno Setup Installer (Windows)
       if: matrix.os == 'windows-latest'
@@ -61,7 +69,7 @@ jobs:
       if: matrix.os == 'macos-latest'
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/app_mac.zip
+        files: dist/教师信息更新工具_Mac.dmg
         draft: false
         prerelease: false
       env:
