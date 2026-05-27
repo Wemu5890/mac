@@ -29,7 +29,7 @@ app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 SESSION_FILES = {}
 
 # 自动更新配置参数
-CURRENT_VERSION = "v1.0.19"  # 把版本号提上去
+CURRENT_VERSION = "v1.0.20"  # 把版本号提上去
 GITHUB_API_URL = "https://api.github.com/repos/Wemu5890/mac/releases/latest"
 
 # 创建全局取消 SSL 验证的上下文，绕过底层证书丢失导致的 500 错误
@@ -232,13 +232,17 @@ def open_as_app(url):
     """尝试以无边框的独立 App 模式打开网页"""
     try:
         if sys.platform == 'win32':
-            # Windows: 优先 Chrome，其次 Edge。必须加 "" 防止命令解析错误
+            # Windows: 优先 Chrome，其次 Edge。必须加 ""
             cmd = f'start "" chrome --app="{url}" || start "" msedge --app="{url}"'
-            subprocess.Popen(cmd, shell=True)
+            result = subprocess.run(cmd, shell=True)
+            if result.returncode != 0:
+                webbrowser.open_new(url)
         elif sys.platform == 'darwin':
             # Mac: 优先 Chrome，其次 Edge
             cmd = f'open -n -a "Google Chrome" --args --app="{url}" || open -n -a "Microsoft Edge" --args --app="{url}"'
-            subprocess.Popen(cmd, shell=True)
+            result = subprocess.run(cmd, shell=True)
+            if result.returncode != 0:
+                webbrowser.open_new(url)
         else:
             webbrowser.open_new(url)
     except Exception:
