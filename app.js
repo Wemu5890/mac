@@ -1,3 +1,67 @@
+const { driver } = window.driver.js;
+
+function startGuide() {
+    // 获取当前显示的是哪个标签页
+    const activeTab = document.querySelector('.tab-content[style*="display: block"]')?.id || document.querySelector('.tab-content.active')?.id || 'teacher-workspace';
+    
+    let steps = [];
+    if (activeTab === 'teacher-workspace') {
+        steps = [
+            { element: '#drop-zone', popover: { title: '上传模板', description: '上传标准 Excel 模板，系统自动解析列结构。' } },
+            { element: '#btn-update-from-excel', popover: { title: '上传更新', description: '上传不规则的教师更新表，系统自动与模板匹配。' } }
+        ];
+    } else if (activeTab === 'student-workspace') {
+        steps = [
+            { element: '#student-smart-zone', popover: { title: '一键拖拽', description: '将包含3个表的文件夹拖入，系统自动分拣，无需逐个选择。' } },
+            { element: '#btn-student-generate', popover: { title: '智能生成', description: '自动计算考号、匹配分班，一键生成完整模板。' } }
+        ];
+    } else if (activeTab === 'rfid-workspace') {
+        steps = [
+            { element: '#rfid-excel-zone', popover: { title: '上传表格', description: '上传包含“二维码”列的学生 Excel 文件。' } },
+            { element: '#rfid-verify-input', popover: { title: '硬件核对', description: '使用感应器扫描芯片，系统将自动匹配学生并高亮表格。' } }
+        ];
+    }
+
+    const d = driver({
+        showProgress: true,
+        steps: steps,
+        // 关键视觉优化：让指引框更漂亮且居中
+        popoverClass: 'custom-driver-popover' 
+    });
+    d.drive();
+}
+
+window.addEventListener('load', () => {
+    if (!localStorage.getItem('guide_shown')) {
+        setTimeout(startGuide, 1000);
+        localStorage.setItem('guide_shown', 'true');
+    }
+});
+
+let isRfidVerified = false;
+
+function showTab(tabId) {
+    // 隐藏所有面板
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    // 取消所有按钮高亮
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
+    // 隐藏全局表格（如果有）
+    const ws = document.getElementById('workspace-section');
+    if (ws) ws.classList.add('hidden');
+    
+    // 如果是教师维护页面，重新显示上传区
+    if (tabId === 'teacher-workspace') {
+        const upload = document.getElementById('upload-section');
+        if (upload) upload.classList.remove('hidden');
+    }
+    
+    // 显示目标面板
+    document.getElementById(tabId).style.display = 'block';
+    // 激活对应按钮
+    event.currentTarget.classList.add('active');
+}
+
 const requiredFields = [
     '教师编号', '姓名', '手机号码', '所教学科', '所教年级', '所教行政班级', '所教教学班级'
 ];
@@ -15,6 +79,26 @@ function showLoading(text) {
 
 function hideLoading() {
     document.getElementById('loading-overlay').classList.add('hidden');
+}
+
+function showToast(message, type = 'success') {
+    let toast = document.getElementById('global-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'global-toast';
+        toast.className = 'toast-notification';
+        document.body.appendChild(toast);
+    }
+    
+    const icon = type === 'success' ? '✅' : '❌';
+    const color = type === 'success' ? 'var(--success-color)' : '#EF4444';
+    
+    toast.innerHTML = `<span class="toast-icon" style="color: ${color}">${icon}</span><span>${message}</span>`;
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
 }
 
 async function checkForUpdates() {
@@ -796,45 +880,63 @@ function parseTextAndFill(lines, rawText) {
 }
 
 // === 学生教学班考号生成模块逻辑 ===
-const setupStudentZone = (zoneId, inputId, nameId) => {
-    const zone = document.getElementById(zoneId);
-    const input = document.getElementById(inputId);
-    const nameDisp = document.getElementById(nameId);
-    if (!zone || !input) return;
+const smartZone = document.getElementById('student-smart-zone');
+const smartInput = document.getElementById('input-student-smart');
+const statusList = document.getElementById('file-status-list');
+let selectedSmartFiles = [];
+
+if (smartZone && smartInput) {
+    smartZone.addEventListener('click', () => smartInput.click());
     
-    zone.addEventListener('click', () => input.click());
-    input.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            nameDisp.textContent = e.target.files[0].name;
-            nameDisp.style.color = '#10B981';
-            nameDisp.style.fontWeight = '600';
-            zone.style.borderColor = '#10B981';
-            zone.style.backgroundColor = '#ecfdf5';
+    // 拖拽支持
+    smartZone.addEventListener('dragover', (e) => { e.preventDefault(); smartZone.style.borderColor = 'var(--primary-color)'; });
+    smartZone.addEventListener('dragleave', () => { smartZone.style.borderColor = '#CBD5E1'; });
+    smartZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        smartZone.style.borderColor = '#CBD5E1';
+        if (e.dataTransfer.files.length) {
+            handleSmartUpload(e.dataTransfer.files);
         }
     });
-};
 
-setupStudentZone('student-template-zone', 'input-student-template', 'name-student-template');
-setupStudentZone('student-master-zone', 'input-student-master', 'name-student-master');
-setupStudentZone('student-class-zone', 'input-student-class', 'name-student-class');
+    smartInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            handleSmartUpload(e.target.files);
+        }
+    });
+}
+
+function handleSmartUpload(files) {
+    selectedSmartFiles = Array.from(files).filter(f => f.name.endsWith('.xls') || f.name.endsWith('.xlsx'));
+    
+    let hasTmpl = false, hasMaster = false, hasClass = false;
+    let html = '';
+    selectedSmartFiles.forEach(f => {
+        const n = f.name;
+        if (n.includes('模板')) hasTmpl = true;
+        if (n.includes('总表')) hasMaster = true;
+        if (n.includes('名单') || n.includes('奥')) hasClass = true;
+        html += `<div style="color: var(--success-color);">✅ 已识别: ${n}</div>`;
+    });
+    
+    statusList.innerHTML = html;
+    
+    if (!hasTmpl || !hasMaster || !hasClass) {
+        statusList.innerHTML += `<div style="color: #EF4444; margin-top: 8px;">⚠️ 提示：需要同时包含[模板]、[总表]、[名单]的Excel文件。当前识别不全，请重新选择！</div>`;
+    }
+}
 
 const btnStudentGen = document.getElementById('btn-student-generate');
 if (btnStudentGen) {
     btnStudentGen.addEventListener('click', async () => {
-        const tmplFile = document.getElementById('input-student-template').files[0];
-        const masterFile = document.getElementById('input-student-master').files[0];
-        const classFile = document.getElementById('input-student-class').files[0];
-
-        if (!tmplFile || !masterFile || !classFile) {
-            alert('请先将【导入模板】、【学生总表】和【分班名单】三个文件全部选中！');
+        if (selectedSmartFiles.length < 3) {
+            showToast('请先选择包含“模板”、“总表”、“名单”3个文件的文件夹！', 'error');
             return;
         }
 
-        showLoading('正在全自动跨表联查、计算4位考号并合成模板...');
+        showLoading('正在全自动分拣、联查并计算4位考号...');
         const formData = new FormData();
-        formData.append('template', tmplFile);
-        formData.append('master', masterFile);
-        formData.append('classlist', classFile);
+        selectedSmartFiles.forEach(f => formData.append('files', f));
 
         try {
             const response = await fetch('/api/process_students', {
@@ -862,17 +964,212 @@ if (btnStudentGen) {
             const uploadSection = document.getElementById('upload-section');
             if (uploadSection) uploadSection.classList.add('hidden');
             
-            const studentSection = document.getElementById('student-section');
+            const studentSection = document.getElementById('student-workspace');
             if (studentSection) studentSection.style.display = 'none';
             
             const workspaceSection = document.getElementById('workspace-section');
             if (workspaceSection) workspaceSection.classList.remove('hidden');
             
-            alert('✨ 智能匹配完成！请在下方表格中复查，确认无误后点击“导出选中行数据”。');
-        } catch (err) {
-            alert('生成失败: ' + err.message);
-        } finally {
             hideLoading();
+            showToast('✨ 智能匹配完成！请在下方表格中复查，确认无误后点击“导出选中行数据”。', 'success');
+        } catch (err) {
+            hideLoading();
+            showToast('生成失败: ' + err.message, 'error');
         }
     });
 }
+
+// === RFID 处理模块交互 ===
+const initRfidZone = (zoneId, inputId, nameId) => {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const nameDisp = document.getElementById(nameId);
+    if (!zone || !input) return;
+    zone.addEventListener('click', () => input.click());
+    input.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            nameDisp.textContent = e.target.files[0].name;
+            nameDisp.style.color = '#10B981';
+            nameDisp.style.fontWeight = '600';
+            zone.style.borderColor = '#10B981';
+            zone.style.backgroundColor = '#ecfdf5';
+        }
+    });
+};
+
+initRfidZone('rfid-excel-zone', 'input-rfid-excel', 'name-rfid-excel');
+initRfidZone('rfid-txt-zone', 'input-rfid-txt', 'name-rfid-txt');
+
+const handleRfidProcess = async (mode) => {
+    const excelFile = document.getElementById('input-rfid-excel').files[0];
+    const txtFile = document.getElementById('input-rfid-txt').files[0];
+
+    if (!excelFile) {
+        alert('请先上传包含“二维码”列的学生表格 (Excel)！');
+        return;
+    }
+    if (mode === 'mode2' && !txtFile) {
+        alert('模式二需要同时上传 TXT 芯片码文件！');
+        return;
+    }
+
+    showLoading(mode === 'mode1' ? '正在执行模式一：保留结构生成新二维码...' : '正在执行模式二：融合RFID并重组提取表格...');
+    
+    const fd = new FormData();
+    fd.append('excel', excelFile);
+    if (txtFile) fd.append('txt', txtFile);
+    fd.append('mode', mode);
+
+    try {
+        const res = await fetch('/api/process_rfid', { method: 'POST', body: fd });
+        const result = await res.json();
+        if (!res.ok || result.error) { 
+            throw new Error(result.error || '处理失败'); 
+        }
+        
+        isRfidVerified = false;
+
+        // 渲染表头
+        const thead = document.getElementById('rfid-table-head');
+        const tbody = document.getElementById('rfid-table-body');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+        
+        result.headers.forEach(h => {
+            const th = document.createElement('th');
+            th.textContent = h;
+            th.style.padding = '12px 16px';
+            th.style.borderBottom = '1px solid var(--border-color)';
+            thead.appendChild(th);
+        });
+        
+        // 渲染数据行
+        result.rows.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #F1F5F9';
+            row.forEach(cell => {
+                const td = document.createElement('td');
+                td.textContent = cell;
+                td.style.padding = '10px 16px';
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        
+        // 更新状态并展示成果区
+        let displayCount = result.rows.length;
+        document.getElementById('rfid-row-count').textContent = displayCount < result.totalRows 
+            ? `预览展示: ${displayCount} 行 / 总计生成: ${result.totalRows} 行` 
+            : `总共生成: ${result.totalRows} 行`;
+            
+        document.getElementById('rfid-result-section').style.display = 'block';
+        setTimeout(() => document.getElementById('rfid-verify-input').focus(), 100);
+        
+        // 绑定导出按钮事件
+        const btnExport = document.getElementById('btn-rfid-export');
+        btnExport.onclick = () => {
+            if (!isRfidVerified) {
+                showToast('请先使用外设感应器扫描任意一条芯片码完成核对，以确保数据安全！', 'error');
+                const d = driver();
+                d.highlight({
+                    element: '#rfid-verify-input',
+                    popover: { title: '强制核对', description: '为了防错，系统要求导出前必须至少进行一次硬件级查验扫描。' }
+                });
+                return;
+            }
+            window.location.href = `/api/download_rfid/${result.sessionId}?mode=${mode}`;
+        };
+        
+        let finalMsg = '✨ 恭喜：处理完成！请在下方预览表格中核对数据。';
+        if (result.warning) {
+            finalMsg += '\n\n⚠️ 注意：' + result.warning;
+        }
+        alert(finalMsg);
+    } catch (err) { 
+        alert('RFID处理失败: ' + err.message); 
+    } finally { 
+        hideLoading(); 
+    }
+};
+
+document.getElementById('btn-rfid-mode1').addEventListener('click', () => handleRfidProcess('mode1'));
+document.getElementById('btn-rfid-mode2').addEventListener('click', () => handleRfidProcess('mode2'));
+
+// === 硬件级 RFID 极速核对引擎 ===
+const setupRfidScanner = () => {
+    const verifyInput = document.getElementById('rfid-verify-input');
+    const verifyResult = document.getElementById('rfid-verify-result');
+    const scannerStation = document.getElementById('rfid-scanner-station');
+    let scanTimeout;
+
+    if (!verifyInput) return;
+
+    verifyInput.addEventListener('keypress', function(e) {
+        // USB感应器会在输入完序列号后自动发送一个 Enter 键 (keyCode 13)
+        if (e.key === 'Enter') {
+            const code = this.value.trim();
+            this.value = ''; // 极其关键：瞬间清空，为下一次毫秒级连扫做准备
+            
+            if (!code) return;
+
+            const tbody = document.getElementById('rfid-table-body');
+            const rows = tbody.querySelectorAll('tr');
+            let foundRow = null;
+            let studentName = '未知';
+            let studentClass = '';
+
+            // 清除之前的雷达高亮
+            rows.forEach(r => r.style.backgroundColor = '');
+
+            // 全局遍历搜索匹配的芯片码
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                // 假设芯片码或二维码在任意列中能匹配上
+                const rowText = Array.from(cells).map(td => td.textContent.trim()).join('||');
+                
+                if (rowText.includes(code)) {
+                    foundRow = row;
+                    studentName = cells[0] ? cells[0].textContent.trim() : '未知';
+                    studentClass = cells[1] ? cells[1].textContent.trim() : '';
+                }
+            });
+
+            clearTimeout(scanTimeout);
+
+            if (foundRow) {
+                isRfidVerified = true;
+                // 成功反馈：绿光雷达
+                scannerStation.style.borderColor = 'var(--success-color)';
+                scannerStation.style.backgroundColor = '#ecfdf5';
+                verifyInput.style.borderColor = 'var(--success-color)';
+                verifyInput.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.15)';
+                
+                verifyResult.innerHTML = `<span style="color: var(--success-hover);">✅ 匹配成功：${studentName} ${studentClass ? '('+studentClass+')' : ''}</span>`;
+                
+                // 表格雷达自动追踪滚屏
+                foundRow.style.backgroundColor = '#dcfce3';
+                foundRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                // 失败反馈：红光警报
+                scannerStation.style.borderColor = '#EF4444';
+                scannerStation.style.backgroundColor = '#fef2f2';
+                verifyInput.style.borderColor = '#EF4444';
+                verifyInput.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.15)';
+                
+                verifyResult.innerHTML = `<span style="color: #DC2626;">❌ 警告：未登记的芯片码！</span>`;
+            }
+
+            // 2.5秒后自动恢复平静状态，不打断连扫
+            scanTimeout = setTimeout(() => {
+                scannerStation.style.borderColor = '#CBD5E1';
+                scannerStation.style.backgroundColor = 'var(--bg-gradient)';
+                verifyInput.style.borderColor = 'var(--border-color)';
+                verifyInput.style.boxShadow = 'none';
+                verifyResult.innerHTML = '<span style="color: var(--text-muted);">等待下一次感应...</span>';
+            }, 2500);
+        }
+    });
+};
+
+// 页面加载完成后初始化监听
+setupRfidScanner();

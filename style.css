@@ -1,18 +1,19 @@
 :root {
-    --bg-color: #F8FAFC;
-    --bg-gradient: radial-gradient(circle at top, #EEF4FF, #F8FAFC 55%);
     --primary-color: #2563EB;
+    --bg-gradient: linear-gradient(180deg, #F7F9FC 0%, #EEF3FA 100%);
+    --card-bg: rgba(255, 255, 255, 0.88);
+    --border-color: #E2E8F0;
+    --border-soft: rgba(59, 130, 246, 0.25);
+    --text-primary: #0F172A;
+    --text-secondary: #64748B;
+    --text-muted: #64748B;
+    --shadow-main: 0 10px 30px rgba(31, 41, 55, 0.06);
+    --shadow-soft: 0 10px 30px rgba(59, 130, 246, 0.08);
+    --shadow-hover: 0 16px 40px rgba(37, 99, 235, 0.15);
     --primary-hover: #1D4ED8;
     --secondary-color: #60A5FA;
     --success-color: #10B981;
     --success-hover: #059669;
-    --text-primary: #1E293B;
-    --text-secondary: #475569;
-    --text-muted: #64748B;
-    --card-bg: rgba(255, 255, 255, 0.95);
-    --border-soft: rgba(59, 130, 246, 0.25);
-    --shadow-soft: 0 10px 30px rgba(59, 130, 246, 0.08);
-    --shadow-hover: 0 16px 40px rgba(37, 99, 235, 0.15);
     --table-header-bg: #F1F5F9;
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
@@ -26,81 +27,74 @@ body {
     color: var(--text-primary);
 }
 
-.app-container {
-    max-width: 1440px;
-    margin: 0 auto;
-    padding: 40px;
+.app-layout {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden; /* 禁止全页溢出 */
 }
 
-/* Header */
-.app-header {
-    margin-bottom: 2rem;
-}
-
-.header-content {
+.sidebar {
+    width: 240px; /* 强制固定宽度，绝不折叠 */
+    flex-shrink: 0; /* 禁止被压缩 */
+    background: #FFFFFF;
+    border-right: 1px solid #E2E8F0;
+    padding: 32px 16px;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-}
-
-.title-group {
-    display: flex;
-    align-items: center;
     gap: 12px;
 }
 
-.app-header h1 {
-    font-size: 2.25rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-    letter-spacing: -0.02em;
+.content-area {
+    flex-grow: 1;
+    overflow-y: auto; /* 内容区独立滚动 */
+    padding: 40px;
+    background: var(--bg-gradient);
 }
 
-.app-header p {
-    color: var(--text-muted);
-    margin: 8px 0 0 0;
-    font-size: 1rem;
-}
-
-.btn-help {
-    height: 32px !important;
-    padding: 0 12px !important;
-    border-radius: 8px !important;
+.nav-item {
+    padding: 14px 20px;
+    border-radius: 12px;
+    border: none;
     background: transparent;
     color: var(--text-secondary);
-    border: 1px solid #CBD5E1;
-    font-size: 13px !important;
-    gap: 6px;
-    box-shadow: none !important;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.btn-help:hover {
+.nav-item:hover {
     background: #F1F5F9;
     color: var(--primary-color);
-    border-color: var(--primary-color);
-    transform: translateY(-1px) !important;
+}
+
+.nav-item.active {
+    background: #EFF6FF;
+    color: var(--primary-color);
+    box-shadow: inset 4px 0 0 var(--primary-color);
 }
 
 /* Buttons */
 .btn {
-    height: 44px;
-    border-radius: 14px;
+    height: 56px;
+    border-radius: 16px;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 700;
     border: 1px solid transparent;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0 1.25rem;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 0 1.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
 }
 
 .btn:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
+    box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.2);
 }
 
 .btn-primary {
@@ -126,11 +120,11 @@ body {
 
 /* Cards & Layout */
 .card {
-    backdrop-filter: blur(20px);
     background: var(--card-bg);
-    border-radius: 24px;
-    border: var(--border-soft);
-    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: var(--shadow-main);
+    border-radius: 20px;
 }
 
 .hidden {
@@ -494,4 +488,36 @@ input[type="checkbox"] {
 }
 .toast-icon {
     color: #10b981;
+}
+
+/* ==========================================================================
+   Tab Navigation Styles
+   ========================================================================== */
+.tabs-container { display: flex; gap: 10px; margin-bottom: 20px; }
+.tab-btn { padding: 10px 24px; border: none; background: #E2E8F0; cursor: pointer; border-radius: 8px; font-weight: 600; transition: 0.3s; }
+.tab-btn.active { background: var(--primary-color); color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.4s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.privacy-badge {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* Driver.js Custom Styling */
+.custom-driver-popover {
+    background: white !important;
+    border-radius: 16px !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15) !important;
+    padding: 10px !important;
+}
+.driver-popover-title {
+    font-size: 1.2rem !important;
+    color: var(--primary-color) !important;
 }

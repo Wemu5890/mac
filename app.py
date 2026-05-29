@@ -13,6 +13,7 @@ import subprocess
 import openpyxl
 import pandas as pd
 import re
+import urllib.parse
 from flask import Flask, request, jsonify, send_file, send_from_directory
 
 def get_base_path():
@@ -269,12 +270,22 @@ def export_file():
 
 @app.route('/api/process_students', methods=['POST'])
 def process_students():
-    if 'template' not in request.files or 'master' not in request.files or 'classlist' not in request.files:
-        return jsonify({"error": "缺失必要文件"}), 400
+    files = request.files.getlist('files')
+    files_map = {"template": None, "master": None, "classlist": None}
+    
+    # 自动分拣逻辑
+    for f in files:
+        fname = f.filename
+        if '模板' in fname: files_map['template'] = f
+        elif '总表' in fname: files_map['master'] = f
+        elif '名单' in fname or '奥' in fname: files_map['classlist'] = f
         
-    tmpl_file = request.files['template']
-    master_file = request.files['master']
-    class_file = request.files['classlist']
+    if not all(files_map.values()):
+        return jsonify({"error": "未能自动识别所有必要文件，请确保文件名包含：'模板'、'总表'、'名单'"}), 400
+    
+    tmpl_file = files_map['template']
+    master_file = files_map['master']
+    class_file = files_map['classlist']
     
     session_id = str(uuid.uuid4())
     tmpl_path = os.path.join(app.config['UPLOAD_FOLDER'], f"stu_{session_id}_tmpl.xlsx")
@@ -398,6 +409,166 @@ def process_students():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/process_rfid', methods=['POST'])
+def process_rfid():
+    if 'excel' not in request.files:
+        return jsonify({"error": "缺失 Excel 文件"}), 400
+        
+    excel_file = request.files['excel']
+    mode = request.form.get('mode', 'mode1')
+    
+    session_id = str(uuid.uuid4())
+    excel_path = os.path.join(app.config['UPLOAD_FOLDER'], f"rfid_{session_id}_excel.xlsx")
+    excel_file.save(excel_path)
+    
+    txt_lines = []
+    if mode == 'mode2':
+        if 'txt' not in request.files:
+            return jsonify({"error": "模式二缺失 TXT 文件"}), 400
+        txt_file = request.files['txt']
+        txt_content = txt_file.read().decode('utf-8', errors='ignore')
+        
+        for raw_line in txt_content.splitlines():
+            line = raw_line.strip()
+            # 过滤掉空行和包含连字符的无效分割线
+            if not line or line.startswith('-'):
+                continue
+                
+            # 尝试按逗号分割，提取真正的芯片码
+            # 例如 "2,3497865260,2026/5/28 11:15:17" 会被切分
+            parts = line.split(',')
+            if len(parts) >= 2:
+                # 取出中间部分的芯片码，剔除前面的序号和后面的时间
+                rfid_code = parts[1].strip()
+            else:
+                # 如果没有逗号，则认为整行就是纯芯片码
+                rfid_code = parts[0].strip()
+                
+            if rfid_code:
+                txt_lines.append(rfid_code)
+        
+    try:
+        wb = openpyxl.load_workbook(excel_path, data_only=True)
+        ws = wb.active
+        
+        header_row_idx = 1
+        qr_col_idx = -1
+        
+        # 智能定位含有“二维码”的列头
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.value and '二维码' in str(cell.value):
+                    header_row_idx = row[0].row
+                    qr_col_idx = cell.column
+                    break
+            if qr_col_idx != -1:
+                break
+                
+        if qr_col_idx == -1:
+            return jsonify({"error": "Excel 中未找到表头包含“二维码”的列"}), 400
+            
+        output_wb = openpyxl.Workbook()
+        output_ws = output_wb.active
+        student_count = 0
+        
+        if mode == 'mode1':
+            for r_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
+                row_list = list(row)
+                if r_idx < header_row_idx:
+                    output_ws.append(row_list)
+                    continue
+                    
+                # 防止短行越界补齐
+                while len(row_list) <= qr_col_idx:
+                    row_list.append("")
+                    
+                if r_idx == header_row_idx:
+                    row_list.insert(qr_col_idx, '二维码123')
+                    output_ws.append(row_list)
+                else:
+                    if not any(row_list): continue
+                    original_qr = str(row_list[qr_col_idx - 1]).strip() if row_list[qr_col_idx - 1] is not None else ""
+                    if original_qr.endswith('.0'): original_qr = original_qr[:-2]
+                    
+                    new_qr = "XS" + original_qr if original_qr and original_qr not in ["None", ""] else ""
+                    row_list.insert(qr_col_idx, new_qr)
+                    output_ws.append(row_list)
+                    
+        elif mode == 'mode2':
+            orig_headers = [str(c.value).strip() if c.value else "" for c in ws[header_row_idx]]
+            def get_h(idx, default):
+                return orig_headers[idx] if idx < len(orig_headers) and orig_headers[idx] else default
+                
+            headers = [
+                get_h(0, '姓名'), get_h(1, '班级'), get_h(2, '学号'), 
+                get_h(3, '学科'), get_h(4, '教辅名称'), 
+                '二维码', '二维码123', ' ', 'RFID'
+            ]
+            output_ws.append(headers)
+            
+            for r_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
+                if r_idx <= header_row_idx: continue
+                if not any(row): continue
+                    
+                original_qr = str(row[qr_col_idx - 1]).strip() if len(row) >= qr_col_idx and row[qr_col_idx - 1] is not None else ""
+                if original_qr.endswith('.0'): original_qr = original_qr[:-2]
+                new_qr = "XS" + original_qr if original_qr and original_qr not in ["None", ""] else ""
+                
+                rfid = txt_lines[student_count] if student_count < len(txt_lines) else ""
+                
+                # 安全提取前五列
+                col0 = str(row[0]).strip() if len(row) > 0 and row[0] is not None else ""
+                col1 = str(row[1]).strip() if len(row) > 1 and row[1] is not None else ""
+                if col1.endswith('.0'): col1 = col1[:-2]
+                col2 = str(row[2]).strip() if len(row) > 2 and row[2] is not None else ""
+                if col2.endswith('.0'): col2 = col2[:-2]
+                col3 = str(row[3]).strip() if len(row) > 3 and row[3] is not None else ""
+                col4 = str(row[4]).strip() if len(row) > 4 and row[4] is not None else ""
+                
+                output_ws.append([col0, col1, col2, col3, col4, original_qr, new_qr, "", rfid])
+                student_count += 1
+                
+        output_path = os.path.join(app.config['UPLOAD_FOLDER'], f"rfid_processed_{session_id}.xlsx")
+        output_wb.save(output_path)
+        
+        # 提取预览数据（最多提取 500 行供前端核对，防止浏览器卡顿）
+        preview_headers = [str(c.value) if c.value else "" for c in output_ws[1]]
+        preview_rows = []
+        for row in output_ws.iter_rows(min_row=2, max_row=501, values_only=True):
+            preview_rows.append([str(c) if c is not None else "" for c in row])
+            
+        warning_msg = ""
+        if mode == 'mode2' and student_count != len(txt_lines):
+            warning_msg = f"Excel中提取学生数({student_count})与TXT中RFID数量({len(txt_lines)})不一致，请检查是否可能存在数据错位！"
+            
+        return jsonify({
+            "sessionId": session_id,
+            "headers": preview_headers,
+            "rows": preview_rows,
+            "totalRows": output_ws.max_row - 1,
+            "warning": warning_msg
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/download_rfid/<session_id>', methods=['GET'])
+def download_rfid(session_id):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"rfid_processed_{session_id}.xlsx")
+    if not os.path.exists(file_path):
+        return jsonify({"error": "文件已过期或不存在，请重新处理！"}), 404
+        
+    mode = request.args.get('mode', 'mode1')
+    filename = "模式一_新增二维码.xlsx" if mode == 'mode1' else "模式二_RFID重组表格.xlsx"
+    
+    return send_file(
+        file_path, 
+        as_attachment=True, 
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 def find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('', 0))
@@ -407,10 +578,10 @@ def find_free_port():
 def open_as_app(url):
     try:
         if sys.platform == 'win32':
-            cmd = f'start "" chrome --app="{url}" || start "" msedge --app="{url}"'
+            cmd = f'start "" chrome --app="{url}" --window-size=1200,800 || start "" msedge --app="{url}" --window-size=1200,800'
             subprocess.run(cmd, shell=True)
         elif sys.platform == 'darwin':
-            cmd = f'open -n -a "Google Chrome" --args --app="{url}" || open -n -a "Microsoft Edge" --args --app="{url}"'
+            cmd = f'open -n -a "Google Chrome" --args --app="{url}" --window-size=1200,800 || open -n -a "Microsoft Edge" --args --app="{url}" --window-size=1200,800'
             subprocess.run(cmd, shell=True)
         else:
             webbrowser.open_new(url)
